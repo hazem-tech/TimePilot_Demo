@@ -72,7 +72,7 @@ fun RepeatScreen(eventName: String, navController: NavController) {
         )
     }
 
-    Column(Modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState())) {
+    Column(Modifier.verticalScroll(rememberScrollState())) {
         LargeTopAppBar(
             title = { Text(
                 if (numState.currentPage == 0)

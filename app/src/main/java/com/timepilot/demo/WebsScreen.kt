@@ -35,7 +35,7 @@ fun WebsScreen() {
     val allowedKeywords = remember { mutableListOf("coursera", "edx", "youtube.com/tech") }
     val suggestionChips = listOf("Block all websites", "TikTok", "YouTube", "Instagram")
 
-    LazyColumn(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    LazyColumn(Modifier.fillMaxSize()) {
         item {
             WebsiteAddItem {
                 blockedKeywords.add(0, "")

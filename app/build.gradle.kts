@@ -2,7 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.devtools.ksp") // New implementations
+    // New implementations
+    id("com.google.devtools.ksp")
+    id("androidx.room")
 }
 
 android {
@@ -38,6 +40,9 @@ android {
     buildFeatures {
         compose = true
     }
+    room {
+        schemaDirectory("$projectDir/schemas")
+    }
 }
 
 dependencies {
@@ -47,6 +52,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose) // for navigation
     implementation(libs.sh.reorderable) // for very easy free draggable list
     implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
     ksp(libs.room.compiler)
     annotationProcessor(libs.room.compiler)
 

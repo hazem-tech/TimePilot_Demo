@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Bundle
 import android.os.Process
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,7 +17,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.navigation.compose.NavHost
@@ -34,11 +39,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             TimePilotDemoTheme {
                 val navController = rememberNavController()
-                var allApps = listOf<App>()
+                var allApps by remember { mutableStateOf(listOf<App>()) }
                 val scope = rememberCoroutineScope()
                 LaunchedEffect(Unit) {
                     scope.launch {
                         allApps = getInstalledApps(this@MainActivity).sortedBy { it.name }
+                        Log.d("AllAppsUpdating", allApps.toString())
                     }
                 }
 

@@ -162,11 +162,19 @@ fun AppsScreen(allAppsList: List<App>) {
                     gridState.animateScrollToItem(0)
                 }
             },
-            modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 12.dp),
-            menuSelectAllOnClick = {
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 18.dp, end = 18.dp, top = 12.dp),
+            menuSelectAllOnClick =
+            // if there is an item that is not added, which means not null, show select all, else return null
+            if (filteredList.find { !it.added.value } != null) {{
                 selectedApps.clear()
                 selectedApps.addAll(filteredList)
                 filteredList.forEach { it.added.value = true }
+            }} else null,
+            menuUnselectAllOnClick = {
+                selectedApps.clear()
+                filteredList.forEach { it.added.value = false }
             }
         )
 
@@ -229,21 +237,30 @@ fun SelectedAppsRow(selectedApps: SnapshotStateList<App>, state: LazyListState, 
             ) { item ->
                 AppItem(
                     app = item,
-                    modifier = Modifier.width(screenWidth).animateItem(
-                        fadeInSpec = tween(durationMillis = 300),
-                        fadeOutSpec = tween(durationMillis = 300),
-                        placementSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )),
+                    modifier = Modifier
+                        .width(screenWidth)
+                        .animateItem(
+                            fadeInSpec = tween(durationMillis = 300),
+                            fadeOutSpec = tween(durationMillis = 300),
+                            placementSpec = spring(
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        ),
                     selectedBar = true,
                     onClick = { onClick(selectedApps.indexOf(item)) }
                 )
             }
         }
-        Box(Modifier.fillMaxWidth().padding(top = 10.dp)) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp)) {
             SmallText("All apps")
-            HorizontalDivider(Modifier.width(140.dp).align(Alignment.Center))
+            HorizontalDivider(
+                Modifier
+                    .width(140.dp)
+                    .align(Alignment.Center))
         }
     }
 }
@@ -264,7 +281,8 @@ fun AppsSearchBar(
     textState: MutableState<String>,
     modifier: Modifier = Modifier,
     onValueChange: (String) -> Unit,
-    menuSelectAllOnClick: () -> Unit = {}
+    menuSelectAllOnClick: (() -> Unit)?,
+    menuUnselectAllOnClick: () -> Unit
 ) {
     val focusManager = LocalFocusManager.current
     var expanded by remember { mutableStateOf(false) }
@@ -288,8 +306,8 @@ fun AppsSearchBar(
                         onDismissRequest = { expanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Select all") },
-                            onClick = menuSelectAllOnClick
+                            text = { Text(if (menuSelectAllOnClick != null) "Select all" else "Unselect all") },
+                            onClick = menuSelectAllOnClick ?: menuUnselectAllOnClick
                         )
                         DropdownMenuItem(
                             text = { Text("Sort by app usage") },
@@ -304,10 +322,12 @@ fun AppsSearchBar(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Empty search text",
-                    modifier = Modifier.clickable {
-                        textState.value = ""
-                        focusManager.clearFocus()
-                    }.padding(16.dp)
+                    modifier = Modifier
+                        .clickable {
+                            textState.value = ""
+                            focusManager.clearFocus()
+                        }
+                        .padding(16.dp)
                 )
             }
         },
@@ -326,12 +346,22 @@ fun AppsSearchBar(
 fun AppItem(modifier: Modifier = Modifier, app: App, selectedBar: Boolean, onClick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.padding(vertical = 24.dp).clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
+        modifier = modifier
+            .padding(vertical = 24.dp)
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onClick
+            )
     ) {
         Box {
-            Box(Modifier.size(55.dp)
-                .shadow(elevation = 10.dp, shape = CircleShape,
-                spotColor = Color.Black.copy(alpha = 0.5f))
+            Box(
+                Modifier
+                    .size(55.dp)
+                    .shadow(
+                        elevation = 10.dp, shape = CircleShape,
+                        spotColor = Color.Black.copy(alpha = 0.5f)
+                    )
             )
             Image(
                 painter = app.icon,
