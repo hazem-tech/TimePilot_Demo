@@ -1,17 +1,31 @@
 package com.timepilot.demo
 
+import android.content.Context
+import android.content.Context.LAUNCHER_APPS_SERVICE
+import android.content.pm.LauncherApps
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Bundle
+import android.os.Process
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
+import androidx.navigation.compose.rememberNavController
 import com.timepilot.demo.ui.theme.TimePilotDemoTheme
+import kotlinx.coroutines.launch
+import kotlin.math.pow
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,29 +33,89 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TimePilotDemoTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                val navController = rememberNavController()
+                var allApps = listOf<App>()
+                val scope = rememberCoroutineScope()
+                LaunchedEffect(Unit) {
+                    scope.launch {
+                        allApps = getInstalledApps(this@MainActivity).sortedBy { it.name }
+                    }
+                }
+
+                NavHost(
+                    navController = navController,
+                    startDestination = "home",
+                    enterTransition = { slideIntoContainer(
+                        AnimatedContentTransitionScope.SlideDirection.Start,
+                        tween(300, easing = customEasing), initialOffset = {300}) + fadeIn(tween(200)) },
+                    exitTransition = { slideOutOfContainer(
+                        AnimatedContentTransitionScope.SlideDirection.Start,
+                        tween(300, easing = customEasing), targetOffset = {-300}) + fadeOut(tween(200)) },
+                    popEnterTransition = { slideIntoContainer(
+                        AnimatedContentTransitionScope.SlideDirection.End,
+                        tween(300, easing = customEasing), initialOffset = {-300}) + fadeIn(tween(200)) },
+                    popExitTransition = { slideOutOfContainer(
+                        AnimatedContentTransitionScope.SlideDirection.End,
+                        tween(300, easing = customEasing), targetOffset = {300}) + fadeOut(tween(200)) }
+                ) {
+                    navigation(
+                        startDestination = "settingsScreen",
+                        route = "settings"
+                    ) {
+                        composable("settingsScreen") {
+                            SettingsScreen(navController)
+                        }
+                        composable("strictModeScreen") {
+                            // TODO()
+                        }
+                        composable("alwaysAllowedApps") {
+                            AppsScreen(allApps)
+                        }
+                    }
+
+                    composable("home") {
+                        EventsList(allApps, navController)
+                    }
                 }
             }
         }
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
+val customEasing: Easing = Easing { fraction ->
+    val p0 = 0f
+    val p1 = 1f
+    val p2 = 1f
+    val p3 = 1f
+    (1 - fraction).pow(500) * p0 + 3 * (1 - fraction).pow(2) * fraction * p1 + 3 * (1 - fraction) * fraction.pow(
+        2
+    ) * p2 + fraction.pow(3) * p3
 }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    TimePilotDemoTheme {
-        Greeting("Android")
+private fun getInstalledApps(context: Context) : List<App> {
+    val launcherApps = context.getSystemService(LAUNCHER_APPS_SERVICE) as LauncherApps
+    val userHandle = Process.myUserHandle()
+    val activityList = launcherApps.getActivityList(null, userHandle)
+    val allApps = mutableListOf<App>()
+
+    for (activity in activityList) {
+        val appName = activity.label.toString()
+        val appIcon = activity.getIcon(0)
+        val packageName = activity.applicationInfo.packageName
+        // convert drawable to bitmap
+        val bitmap = Bitmap.createBitmap(
+            appIcon.intrinsicWidth,
+            appIcon.intrinsicHeight,
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(bitmap)
+        appIcon.setBounds(0, 0, canvas.width, canvas.height)
+        appIcon.draw(canvas)
+
+        allApps.add(App(name = appName, packageName = packageName, icon = BitmapPainter(bitmap.asImageBitmap())))
     }
+    allApps.sortBy { it.name }
+    return allApps
+    //val serviceIntent = Intent(this, UsageEventsService::class.java)
+    //startForegroundService(serviceIntent)
 }
