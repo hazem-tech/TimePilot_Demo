@@ -62,12 +62,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,7 +73,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -83,13 +80,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppsWebsScreen(allAppsList: List<App>, navController: NavController) {
+fun AppsWebsScreen(
+    state: EventsStates,
+    onEvent: (EventActions) -> Unit,
+    allAppsList: List<App>,
+    navController: NavController
+) {
     var selectedIndex by remember { mutableIntStateOf(0) }
     val options = listOf("Apps", "Websites", "Custom")
 
@@ -131,22 +132,24 @@ fun AppsWebsScreen(allAppsList: List<App>, navController: NavController) {
             }, label = "AppsWebsCustomTransition"
         ) { targetState ->
             when (targetState) {
-                0 -> AppsScreen(allAppsList)
-                1 -> WebsScreen()
-                2 -> CustomAppScreen()
+                0 -> AppsScreen(state, onEvent, allAppsList)
+                1 -> WebsScreen(state, onEvent)
+                2 -> CustomAppScreen(state, onEvent)
             }
         }
     }
 }
 
 @Composable
-fun AppsScreen(allAppsList: List<App>) {
+fun AppsScreen(
+    state: EventsStates,
+    onEvent: (EventActions) -> Unit,
+    allAppsList: List<App>
+) {
     val searchQuery = remember { mutableStateOf("") }
     val filteredList = remember(searchQuery.value) {
         allAppsList.filter { it.name.contains(searchQuery.value, ignoreCase = true) }
     }
-    val selectedApps = remember { mutableStateListOf<App>() }
-
     val gridState = rememberLazyGridState()
     val rowState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -168,12 +171,11 @@ fun AppsScreen(allAppsList: List<App>) {
             menuSelectAllOnClick =
             // if there is an item that is not added, which means not null, show select all, else return null
             if (filteredList.find { !it.added.value } != null) {{
-                selectedApps.clear()
-                selectedApps.addAll(filteredList)
+                onEvent(EventActions.ChangeAllowedApps(filteredList.map { it.packageName }))
                 filteredList.forEach { it.added.value = true }
             }} else null,
             menuUnselectAllOnClick = {
-                selectedApps.clear()
+                onEvent(EventActions.ChangeAllowedApps(listOf()))
                 filteredList.forEach { it.added.value = false }
             }
         )
@@ -185,29 +187,41 @@ fun AppsScreen(allAppsList: List<App>) {
             contentPadding = PaddingValues(top = 18.dp, bottom = 60.dp)
         ) {
             item(span = { GridItemSpan(appsGridCells) }) {
-                AnimatedVisibility(selectedApps.isNotEmpty() && searchQuery.value.isEmpty()) {
-                    SelectedAppsRow(selectedApps, rowState, screenWidth) { index ->
-                        val app = selectedApps[index]
-                        selectedApps.remove(selectedApps[index])
+                AnimatedVisibility(state.allowedApps.isNotEmpty() && searchQuery.value.isEmpty()) {
+                    SelectedAppsRow(allAppsList.filter { it.packageName in state.allowedApps }, rowState, screenWidth) { app ->
                         filteredList[filteredList.indexOf(app)].added.value = false
+
+                        val allowedApps = state.allowedApps.toMutableList()
+                        allowedApps.remove(app.packageName)
+                        onEvent(EventActions.ChangeAllowedApps(allowedApps))
                     }
                 }
-                if (selectedApps.isNotEmpty() && searchQuery.value.isEmpty()) {
+                if (state.allowedApps.isNotEmpty() && searchQuery.value.isEmpty()) {
                     coroutineScope.launch {
                         gridState.animateScrollToItem(0)
                     }
+                }
+
+                if (filteredList.isEmpty()) {
+                    Text(
+                        text = "No result for $searchQuery",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(30.dp)
+                    )
                 }
             }
 
             items(filteredList.size) { index ->
                 AppItem(app = filteredList[index], selectedBar = false, onClick = {
+                    val allowedApps = state.allowedApps.toMutableList()
                     filteredList[index].added.value = if (!filteredList[index].added.value) {
-                        selectedApps.add(0, filteredList[index])
+                        allowedApps.add(0, filteredList[index].packageName)
                         true
                     } else {
-                        selectedApps.remove(filteredList[index])
+                        allowedApps.remove(filteredList[index].packageName)
                         false
                     }
+                    onEvent(EventActions.ChangeAllowedApps(allowedApps))
 
                     if (filteredList.filter { it.added.value }.size > 4) {
                         coroutineScope.launch {
@@ -227,7 +241,7 @@ fun AppsScreen(allAppsList: List<App>) {
 }
 
 @Composable
-fun SelectedAppsRow(selectedApps: SnapshotStateList<App>, state: LazyListState, screenWidth: Dp, onClick: (Int) -> Unit) {
+fun SelectedAppsRow(selectedApps: List<App>, state: LazyListState, screenWidth: Dp, onClick: (App) -> Unit) {
     Column {
         SmallText("Allowed apps")
         LazyRow(state = state, contentPadding = PaddingValues(horizontal = 10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -248,7 +262,7 @@ fun SelectedAppsRow(selectedApps: SnapshotStateList<App>, state: LazyListState, 
                             )
                         ),
                     selectedBar = true,
-                    onClick = { onClick(selectedApps.indexOf(item)) }
+                    onClick = { onClick(item) }
                 )
             }
         }
@@ -431,13 +445,6 @@ fun CircularCheckbox(
 @Composable
 fun AppsPreview() {
     TimePilotDemoTheme {
-        AppsWebsScreen(
-            listOf(
-                List(80) {
-                    App(name = "$it Hello", packageName = it.toString(), icon = painterResource(id = R.drawable.ic_launcher_background))
-                }
-            ).flatten(),
-            rememberNavController()
-        )
+      // AppsWebsScreen(listOf(List(80) { App(name = "$it Hello", packageName = it.toString(), icon = painterResource(id = R.drawable.ic_launcher_background)) }).flatten(), rememberNavController())
     }
 }

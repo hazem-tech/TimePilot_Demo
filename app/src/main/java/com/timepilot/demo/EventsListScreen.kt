@@ -30,11 +30,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -56,24 +51,27 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
-fun EventsList(allApps: List<App>, navController: NavController) {
-    var sheetMode by remember { mutableIntStateOf(hidden) }
+fun EventsList(
+    state: EventsStates,
+    onEvent: (EventActions) -> Unit,
+    allApps: List<App>,
+    colors: List<ColorOption>,
+    navController: NavController
+) {
     val primaryColor = MaterialTheme.colorScheme.primaryContainer
     val secondaryColor = MaterialTheme.colorScheme.secondaryContainer
 
     val view = LocalView.current
-    var list by remember { mutableStateOf(List(12) { "Item $it" }) }
     val lazyListState = rememberLazyListState()
     val reorderableLazyListState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        list = list.toMutableList().apply {
-            add(to.index, removeAt(from.index))
-        }
+//        list = list.toMutableList().apply {
+//            add(to.index, removeAt(from.index))
+//        }
+        // todo how to sort
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
             view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_FREQUENT_TICK)
     }
-
-    var empty by remember { mutableStateOf(false) }
 
     Scaffold(contentColor = MaterialTheme.colorScheme.onSurface) { innerPadding ->
         Box(modifier = Modifier
@@ -82,8 +80,8 @@ fun EventsList(allApps: List<App>, navController: NavController) {
             // TODO() the lazy column for the events and the calendar cells works with slide animation
 
             Column {
-                CalendarBar(navController)
-                AnimatedVisibility(!empty) {
+                CalendarBar(onEvent, navController)
+                AnimatedVisibility(state.allEvent.isNotEmpty()) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         state = lazyListState,
@@ -95,9 +93,10 @@ fun EventsList(allApps: List<App>, navController: NavController) {
                         ),
                         verticalArrangement = Arrangement.spacedBy(9.dp),
                     ) {
-                        items(list, key = { it }) {
+                        items(state.allEvent, key = { it.id }) {
                             ReorderableItem(reorderableLazyListState, key = it) { // isDragging ->
                                 EventCard(
+                                    state = state,
                                     modifier = Modifier.longPressDraggableHandle(
                                         onDragStarted = {
                                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
@@ -108,9 +107,12 @@ fun EventsList(allApps: List<App>, navController: NavController) {
                                                 view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                                         },
                                     ),
-                                    startOnClick = { empty = true },
+                                    startOnClick = {
+                                        // TODO()
+                                    },
                                     pauseOnClick = {},
-                                    markOnClick = {}
+                                    markOnClick = {},
+                                    colors = colors
                                 )
                             }
                         }
@@ -118,7 +120,7 @@ fun EventsList(allApps: List<App>, navController: NavController) {
                 }
             }
 
-            AnimatedVisibility(empty) {
+            AnimatedVisibility(state.allEvent.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
@@ -177,7 +179,7 @@ fun EventsList(allApps: List<App>, navController: NavController) {
                             )
                         }
                     },
-                onClick = { sheetMode = 1 }
+                onClick = { onEvent(EventActions.ShowPartialSheet) }
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Add,
@@ -192,7 +194,7 @@ fun EventsList(allApps: List<App>, navController: NavController) {
             }
         }
 
-        CustomBottomSheet(sheetMode, { sheetMode = it }) { sheetHeight ->
+        CustomBottomSheet(state, onEvent) { sheetHeight ->
             val sheetNavController = rememberNavController()
             NavHost(
                 navController = sheetNavController,
@@ -231,11 +233,11 @@ fun EventsList(allApps: List<App>, navController: NavController) {
                 }
             ) {
                 composable("eventSheet") {
-                    NewEvent(mode = sheetMode, setSheet = { sheetMode = it }, sheetHeight = sheetHeight, newOne = true, navController = sheetNavController)
+                    NewEvent(state = state, onEvent = onEvent, sheetHeight = sheetHeight, newOne = true, colors = colors, navController = sheetNavController)
                 }
 
                 composable("appsWebsScreen") {
-                    AppsWebsScreen(allApps, sheetNavController)
+                    AppsWebsScreen(state, onEvent, allApps, sheetNavController)
                 }
 
                 navigation(
@@ -243,15 +245,15 @@ fun EventsList(allApps: List<App>, navController: NavController) {
                     route = "eventDuration"
                 ) {
                     composable("eventDurationScreen") {
-                        EventDuration("studying", sheetNavController)
+                        EventDuration(state, onEvent, sheetNavController)
                     }
                     composable("eventTrackingScreen") {
-                        EventTracking(sheetNavController)
+                        EventTracking(state, onEvent, sheetNavController)
                     }
                 }
 
                 composable("eventRepeat") {
-                    RepeatScreen("studying", sheetNavController)
+                    RepeatScreen(state, onEvent, sheetNavController)
                 }
             }
         }
@@ -262,6 +264,6 @@ fun EventsList(allApps: List<App>, navController: NavController) {
 @Composable
 fun GreetingPreview() {
     TimePilotDemoTheme {
-        EventsList(listOf(), rememberNavController())
+        // EventsList(listOf(), rememberNavController())
     }
 }

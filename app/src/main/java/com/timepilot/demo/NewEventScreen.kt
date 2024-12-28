@@ -1,6 +1,5 @@
 package com.timepilot.demo
 
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
@@ -34,6 +33,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.MoreTime
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -52,7 +52,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,30 +71,33 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import kotlin.math.absoluteValue
 
 @Composable
-fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boolean, navController: NavController) {
-    var eventDate by remember { mutableStateOf(SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(System.currentTimeMillis()))) }
-    var anyTimeTask by remember { mutableStateOf(false) }
+fun NewEvent(
+    state: EventsStates,
+    onEvent: (EventActions) -> Unit,
+    sheetHeight: Float,
+    newOne: Boolean,
+    colors: List<ColorOption>,
+    navController: NavController
+) {
     val focusManager = LocalFocusManager.current
-
     var hideMoreOptions by remember { mutableStateOf(true) }
     var fullScreenItemsShown by remember { mutableFloatStateOf(0f) }
-    var doNotSave by remember { mutableStateOf(false) }
-    var openDateDialog by remember { mutableStateOf(false) }
+    val openDateDialog = remember { mutableStateOf(false) }
+    val openCancelAlertDialog = remember { mutableStateOf(false) }
 
     Column {
         Row(
@@ -110,10 +112,35 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
                 exit = shrinkOut(shrinkTowards = Alignment.Center),
             ) {
                 TopButton("Cancel") {
-                    // TODO() if current event != a brand new event && !doNotSave, then show confirmation dialog before making it true
-                    doNotSave = true
                     focusManager.clearFocus()
-                    setSheet(hidden)
+                    // if nothing changed do not show dialog
+                    if (true) {
+                        openCancelAlertDialog.value = true
+                    } else {
+                        onEvent(EventActions.HideSheet)
+                    }
+                }
+                if (openCancelAlertDialog.value) {
+                    AlertDialog(
+                        title = {
+                            Text("Are you sure you want to cancel?")
+                        },
+                        onDismissRequest = { openCancelAlertDialog.value = false },
+                        confirmButton = {
+                            TextButton(
+                                onClick = { onEvent(EventActions.HideSheet) }
+                            ) {
+                                Text("Discard changes")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = { openCancelAlertDialog.value = false }
+                            ) {
+                                Text("Back")
+                            }
+                        }
+                    )
                 }
             }
             AnimatedVisibility(
@@ -123,7 +150,7 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
             ) {
                 TopButton("Save", FontWeight.Medium) {
                     focusManager.clearFocus()
-                    setSheet(hidden)
+                    onEvent(EventActions.SaveEvent)
                 }
             }
         }
@@ -134,18 +161,18 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
             exit = shrinkOut(shrinkTowards = Alignment.Center),
         ) {
             TextButton(
-                onClick = { openDateDialog = true },
+                onClick = { openDateDialog.value = true },
                 modifier = Modifier
                     .padding(start = 10.dp, top = 3.dp)
                     .alpha(fullScreenItemsShown)
             ) {
-                Text(eventDate)
+                Text(LocalDate.parse(state.date).format(DateTimeFormatter.ofPattern("d MMM")))
             }
-            if (openDateDialog) {
+            if (openDateDialog.value) {
                 DatePickerModal(
                     initialSelectedDate = LocalDate.now(),
-                    onDateSelected = { eventDate = it},
-                    onDismiss = { openDateDialog = false }
+                    onDateSelected = { onEvent(EventActions.ChangeDate(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it))))},
+                    onDismiss = { openDateDialog.value = false }
                 )
             }
         }
@@ -153,7 +180,8 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
         Box(Modifier.padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 12.dp)) {
             for (i in 0..1) {
                 CustomTextField(
-                    initialText = "",
+                    state = state,
+                    onEvent = onEvent,
                     hint = "Name",
                     textStyle = if (i == 0)
                         MaterialTheme.typography.bodyLarge.copy(MaterialTheme.colorScheme.onSurface)
@@ -164,9 +192,9 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
                         .fillMaxWidth()
                         .onFocusChanged {
                             if (it.isFocused)
-                                setSheet(forcedFullyExpanded)
-                            else if (mode == forcedFullyExpanded)
-                                setSheet(fullyExpanded)
+                                onEvent(EventActions.ShowForceFullSheet)
+                            else if (state.isForcedSheet)
+                                onEvent(EventActions.ShowFullSheet)
                         }
                         .alpha(
                             if (i == 0) {
@@ -177,7 +205,7 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
                         ),
                     onDone = {
                         focusManager.clearFocus()
-                        setSheet(fullyExpanded) // not forced anymore
+                        onEvent(EventActions.ShowFullSheet) // not forced anymore
                     }
                 )
             }
@@ -190,15 +218,6 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
                         .alpha(fullScreenItemsShown)
                 ) {
                     var expanded by remember { mutableStateOf(false) }
-                    val colorsOptions = listOf(
-                        Pair("Main", MaterialTheme.colorScheme.primaryContainer),
-                        Pair("Red", Color(0xFFFFD8D8)),
-                        Pair("Green", Color(0xFFD3E8E9)),
-                        Pair("Blue", Color(0xFFD8E3FF)),
-                        Pair("Yellow", Color(0xFFEAE4D5)),
-                        Pair("Pink", Color(0xFFFFD8ED)),
-                        Pair("Purple", Color(0xFFF1D8FF))
-                    )
                     Button(
                         onClick = { expanded = !expanded },
                         shape = CircleShape,
@@ -211,19 +230,19 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
                         onDismissRequest = { expanded = false },
                         modifier = Modifier.background(MaterialTheme.colorScheme.background)
                     ) {
-                        colorsOptions.forEach { (colorName, color) ->
+                        colors.forEach { color ->
                             DropdownMenuItem(
-                                text = { Text(colorName) },
+                                text = { Text(color.name) },
                                 leadingIcon = {
                                     Box(
                                         Modifier
                                             .size(25.dp)
                                             .clip(CircleShape)
-                                            .background(color))
+                                            .background(color.backgroundBarColor))
                                 },
                                 onClick = {
                                     expanded = false
-                                    // TODO()
+                                    EventActions.SetColor(color.name)
                                 }
                             )
                         }
@@ -239,7 +258,7 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
                     navController.navigate("appsWebsScreen") {
                         launchSingleTop = true
                     }
-                    setSheet(forcedFullyExpanded)
+                    onEvent(EventActions.ShowForceFullSheet)
                 },
                 contentPadding = PaddingValues(horizontal = 26.dp, vertical = 11.dp)
             ) {
@@ -264,7 +283,7 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
                 navController.navigate("eventDuration") {
                     launchSingleTop = true
                 }
-                setSheet(forcedFullyExpanded)
+                onEvent(EventActions.ShowForceFullSheet)
             })
         )
 
@@ -289,7 +308,7 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
                         navController.navigate("eventRepeat") {
                             launchSingleTop = true
                         }
-                        setSheet(forcedFullyExpanded)
+                        onEvent(EventActions.ShowForceFullSheet)
                     })
                 )
 
@@ -317,9 +336,9 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
                         )
                     },
                     trailingContent = {
-                        Switch(checked = anyTimeTask, onCheckedChange = { anyTimeTask = !anyTimeTask })
+                        Switch(checked = state.anyTimeTask, onCheckedChange = { onEvent(EventActions.ChangeAnytime(it)) })
                     },
-                    modifier = Modifier.clickable(onClick = { anyTimeTask = !anyTimeTask }) // todo show popup explain first time
+                    modifier = Modifier.clickable(onClick = { onEvent(EventActions.ChangeAnytime(!state.anyTimeTask)) }) // todo show popup explain first time
                 )
 
                 if (!newOne) {
@@ -356,12 +375,6 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
             )
         }
 
-        LaunchedEffect(mode) {
-            if (mode == hidden) {
-                doNotSave = false
-                // TODO() if current event != a brand new event && !doNotSave, then save it
-            }
-        }
         LaunchedEffect(sheetHeight) {
             if (sheetHeight < 0.6f) {
                 hideMoreOptions = true
@@ -372,10 +385,10 @@ fun NewEvent(mode: Int, setSheet: (Int) -> Unit, sheetHeight: Float, newOne: Boo
         // handling back button
         val currentBackStackEntry by navController.currentBackStackEntryAsState()
         if (currentBackStackEntry?.destination?.route == "eventSheet") {
-            if (mode == partiallyShown)
-                BackHandler { setSheet(hidden)}
-            else if (mode == fullyExpanded)
-                BackHandler { setSheet(partiallyShown)}
+            if (state.isPartialSheet)
+                BackHandler { onEvent(EventActions.HideSheet) }
+            else if (state.isFullSheet)
+                BackHandler { onEvent(EventActions.ShowPartialSheet) }
         }
     }
 }
@@ -403,14 +416,20 @@ fun TopButton(text: String, fontWeight: FontWeight? = null, onClick: () -> Unit)
 }
 
 @Composable
-fun CustomTextField(initialText: String, textStyle: TextStyle, hint: String, modifier: Modifier = Modifier, onDone: () -> Unit) {
-    var eventName by remember { mutableStateOf(TextFieldValue(initialText)) }
+fun CustomTextField(
+    state: EventsStates,
+    onEvent: (EventActions) -> Unit,
+    onDone: () -> Unit,
+    hint: String,
+    modifier: Modifier = Modifier,
+    textStyle: TextStyle
+    ) {
     BasicTextField(
-        value = eventName,
-        onValueChange = { newText -> eventName = newText },
+        value = state.eventName,
+        onValueChange = { onEvent(EventActions.SetEventName(it)) },
         textStyle = textStyle,
         decorationBox = { innerTextField -> // The text hint
-            if (eventName.text.isEmpty()) {
+            if (state.eventName.isEmpty()) {
                 Text(
                     text = hint,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -429,10 +448,8 @@ fun CustomTextField(initialText: String, textStyle: TextStyle, hint: String, mod
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomBottomSheet(
-    mode: Int, // 0 is hidden. 1 is partial. 2 is full
-    changeMode: (Int) -> Unit,
-    containerColor: Color = BottomSheetDefaults.ContainerColor,
-    contentColor: Color = contentColorFor(containerColor),
+    state: EventsStates,
+    onEvent: (EventActions) -> Unit,
     content: @Composable (Float) -> Unit
 ) {
     val hiddenHeight = 0.dp
@@ -443,14 +460,16 @@ fun CustomBottomSheet(
     var currentHeight by remember { mutableStateOf(partialHeight) }
     val animatedHeight by animateDpAsState(targetValue = sheetHeight, label = "SheetHeightAnimation")
 
-    LaunchedEffect(mode) {
-        sheetHeight = when (mode) {
-            partiallyShown -> partialHeight
-            fullyExpanded -> fullHeight
-            forcedFullyExpanded -> fullHeight
-            else -> hiddenHeight
+    LaunchedEffect(state) {
+        sheetHeight = if (state.isPartialSheet) {
+            partialHeight
+        } else if (state.isFullSheet) {
+            fullHeight
+        } else if (state.isForcedSheet) {
+            fullHeight
+        } else {
+            hiddenHeight
         }
-        Log.d("FUckMode", mode.toString())
     }
 
     Box {
@@ -458,12 +477,12 @@ fun CustomBottomSheet(
             .fillMaxSize()
             .background(Color.Black.copy(alpha = (sheetHeight.value / fullHeight.value) / 1.6f))
             .then(
-                if (mode == 1) {
+                if (state.isPartialSheet) {
                     Modifier.clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = {
-                            changeMode(hidden)
+                            onEvent(EventActions.HideSheet)
                             sheetHeight = hiddenHeight
                         }
                     )
@@ -477,8 +496,6 @@ fun CustomBottomSheet(
                 .height(animatedHeight)
                 .align(Alignment.BottomCenter),
             shape = BottomSheetDefaults.ExpandedShape,
-            color = containerColor,
-            contentColor = contentColor,
         ) {
             Column {
                 Box(
@@ -488,7 +505,7 @@ fun CustomBottomSheet(
                             orientation = Orientation.Vertical,
                             state = rememberDraggableState { delta ->
                                 currentHeight =
-                                    if (mode != forcedFullyExpanded)
+                                    if (!state.isForcedSheet)
                                         (currentHeight - delta.dp).coerceIn(
                                             hiddenHeight,
                                             fullHeight + 10.dp
@@ -503,13 +520,13 @@ fun CustomBottomSheet(
                             onDragStopped = {
                                 sheetHeight = when {
                                     currentHeight > fullHeight * 0.7f -> {
-                                        if (mode != forcedFullyExpanded) changeMode(fullyExpanded)
+                                        if (!state.isForcedSheet) onEvent(EventActions.ShowFullSheet)
                                         fullHeight
                                     }
 
                                     currentHeight < fullHeight * 0.3f -> {
-                                        if (mode != forcedFullyExpanded) {
-                                            changeMode(hidden)
+                                        if (!state.isForcedSheet) {
+                                            onEvent(EventActions.HideSheet)
                                             hiddenHeight
                                         } else {
                                             fullHeight
@@ -517,8 +534,8 @@ fun CustomBottomSheet(
                                     }
 
                                     else -> {
-                                        if (mode != forcedFullyExpanded) {
-                                            changeMode(partiallyShown)
+                                        if (!state.isForcedSheet) {
+                                            onEvent(EventActions.ShowPartialSheet)
                                             partialHeight
                                         } else {
                                             fullHeight
@@ -540,7 +557,7 @@ fun CustomBottomSheet(
 @Composable
 fun DatePickerModal(
     initialSelectedDate: LocalDate,
-    onDateSelected: (String) -> Unit,
+    onDateSelected: (Long) -> Unit,
     onDismiss: () -> Unit
 ) {
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialSelectedDate.atStartOfDay()
@@ -553,7 +570,7 @@ fun DatePickerModal(
             TextButton(onClick = {
                 val newDate = datePickerState.selectedDateMillis
                 if (newDate != null) {
-                    onDateSelected(SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(newDate)))
+                    onDateSelected(newDate)
                 }
                 onDismiss()
             }) {
@@ -574,13 +591,6 @@ fun DatePickerModal(
 @Composable
 fun SheetPreview() {
     TimePilotDemoTheme {
-        NewEvent(fullyExpanded, { }, 800f, true, rememberNavController())
+        // NewEvent(fullyExpanded, { }, 800f, true, rememberNavController())
     }
 }
-
-
-const val hidden = 0
-const val partiallyShown = 1
-const val fullyExpanded = 2
-// const val disablePartialExpanded = 3
-const val forcedFullyExpanded = 4

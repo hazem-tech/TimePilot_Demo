@@ -2,7 +2,6 @@ package com.timepilot.demo
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,7 +32,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -45,15 +43,21 @@ import androidx.core.graphics.drawable.toBitmap
 import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 
 @Composable
-fun EventCard(modifier: Modifier = Modifier, startOnClick: () -> Unit, pauseOnClick: () -> Unit, markOnClick: () -> Unit, showIcons: Boolean = true) {
-    val backgroundColor = if (isSystemInDarkTheme()) Color(0xFF15171D) else Color(0xFFDAE9FF)
-    val backgroundBarColor = if (isSystemInDarkTheme()) Color(0xFF0D1828) else Color(0xFFB5CDFF)
-    val buttonColor = if (isSystemInDarkTheme()) Color(0xFF20263A) else Color(0xFFC2DBF7)
-    val taskCompletePercentage = 100
-    val allowedAppsList = listOf("com.android.settings", "com.android.settings", "com.android.settings", "com.android.settings", "com.android.settings", "com.android.settings")
-    val allowedSize = allowedAppsList.size
+fun EventCard(
+    state: EventsStates,
+    modifier: Modifier = Modifier,
+    startOnClick: () -> Unit,
+    pauseOnClick: () -> Unit,
+    markOnClick: () -> Unit,
+    colors: List<ColorOption>,
+    showIcons: Boolean = true
+) {
+    val backgroundColor = colors.find { it.name == state.eventColor }!!.backgroundBarColor
+    val backgroundBarColor = colors.find { it.name == state.eventColor }!!.backgroundColor
+    val buttonColor = colors.find { it.name == state.eventColor }!!.buttonColor
+    val taskCompletePercentage = 100 // todo
     val pm = LocalContext.current.packageManager
-    val eventState by remember { mutableStateOf("Start") }
+    val eventState by remember { mutableStateOf("Start") } // todo
 
     Box( // or Surface, or Card, i have no idea
         modifier = modifier.clip(RoundedCornerShape(18.dp))
@@ -74,7 +78,7 @@ fun EventCard(modifier: Modifier = Modifier, startOnClick: () -> Unit, pauseOnCl
             Row(Modifier.padding(bottom = 20.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = "Studying",
+                        text = state.eventName.ifBlank { "Untitled" },
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                         maxLines = 1,
@@ -110,8 +114,8 @@ fun EventCard(modifier: Modifier = Modifier, startOnClick: () -> Unit, pauseOnCl
                         horizontalArrangement = Arrangement.spacedBy((-12).dp),
                         modifier = Modifier.height(35.dp)
                     ) {
-                        if (allowedAppsList.isNotEmpty()) {
-                            for (packageName in allowedAppsList.take(4)) {
+                        if (state.allowedApps.isNotEmpty()) {
+                            for (packageName in state.allowedApps.take(4)) {
                                 Box(contentAlignment = Alignment.Center) {
                                     // border, to get the same of a sample icon
                                     Image(
@@ -134,7 +138,7 @@ fun EventCard(modifier: Modifier = Modifier, startOnClick: () -> Unit, pauseOnCl
                             }
                         }
 
-                        if (allowedSize !in 1..4) {
+                        if (state.allowedApps.size !in 1..4) {
                             Box(contentAlignment = Alignment.Center) {
                                 Image(
                                     bitmap = pm.getApplicationIcon("com.android.settings")
@@ -147,7 +151,7 @@ fun EventCard(modifier: Modifier = Modifier, startOnClick: () -> Unit, pauseOnCl
                                     )
                                 )
                                 Text(
-                                    text = if (allowedSize > 4) "%d+".format(allowedSize - 4) else "0",
+                                    text = if (state.allowedApps.size > 4) "%d+".format(state.allowedApps.size - 4) else "0",
                                     fontSize = 13.sp
                                 ) // how many more apps other than the 4 shown
                             }
@@ -198,6 +202,6 @@ fun EventCard(modifier: Modifier = Modifier, startOnClick: () -> Unit, pauseOnCl
 @Composable
 fun CardPreview() {
     TimePilotDemoTheme {
-        EventCard(showIcons = false, startOnClick = {}, pauseOnClick = {}, markOnClick = {})
+        //EventCard(showIcons = false, startOnClick = {}, pauseOnClick = {}, markOnClick = {})
     }
 }

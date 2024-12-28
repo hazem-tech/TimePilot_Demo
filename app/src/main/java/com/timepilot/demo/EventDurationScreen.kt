@@ -29,7 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,28 +39,27 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EventDuration(eventName: String, navController: NavController) {
+fun EventDuration(
+    state: EventsStates,
+    onEvent: (EventActions) -> Unit,
+    navController: NavController
+) {
     val minTimes by remember { mutableStateOf(
         listOf(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 90, 120,
             150, 180, 210, 240, 300, 360, 420, 480, 540, 600, 660, 720))
     }
     var maxTimes by remember { mutableStateOf(minTimes.drop(1)) } // max can't be zero
+    val minPagerState = rememberPagerState(pageCount = { minTimes.size }, initialPage = minTimes.indexOf(state.minTime))
+    val maxPagerState = rememberPagerState(pageCount = { maxTimes.size }, initialPage = maxTimes.indexOf(state.maxTime))
     var maxCurrentValue: Int
-
-    val minPagerState = rememberPagerState(pageCount = { minTimes.size }, initialPage = 2) // TODO
-    val maxPagerState = rememberPagerState(pageCount = { maxTimes.size }, initialPage = 5) // TODO
-
-    var eventMin = 0
-    var eventMax = 0
 
     Column(Modifier.fillMaxSize()) {
         LargeTopAppBar(
-            title = { Text("$eventName duration") },
+            title = { Text("${state.eventName} duration") },
             navigationIcon = {
                 IconButton(onClick = { navController.popBackStack() }) {
                     Icon(
@@ -118,7 +116,7 @@ fun EventDuration(eventName: String, navController: NavController) {
 
             LaunchedEffect(minPagerState) {
                 snapshotFlow { minPagerState.settledPage }.collect { page ->
-                    eventMin = page
+                    onEvent(EventActions.SetMinTime(page))
                     // todo actually affect data
 
                     maxCurrentValue = maxTimes[maxPagerState.currentPage]
@@ -132,7 +130,7 @@ fun EventDuration(eventName: String, navController: NavController) {
 
             LaunchedEffect(maxPagerState) {
                 snapshotFlow { maxPagerState.settledPage }.collect { page ->
-                    eventMax = page
+                    onEvent(EventActions.SetMaxTime(page))
                 }
             }
         }
@@ -157,10 +155,9 @@ fun EventDuration(eventName: String, navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EventTracking(navController: NavController) {
-    var selectedOption by remember { mutableIntStateOf(1) } // TODO() actually affect event
+fun EventTracking(state: EventsStates, onEvent: (EventActions) -> Unit, navController: NavController) {
     val options = listOf(
-        Triple("App usage", "Ensures you spend the specified duration actively using the selected apps", Icons.Outlined.Leaderboard),
+        Triple("App Usage", "Ensures you spend the specified duration actively using the selected apps", Icons.Outlined.Leaderboard),
         Triple("Countdown", "A timer runs when you start the event for the specified duration", Icons.Outlined.Timer)
     )
 
@@ -178,13 +175,13 @@ fun EventTracking(navController: NavController) {
             windowInsets = WindowInsets(0.dp)
         )
 
-        options.forEachIndexed { index, (headline, description, icon) ->
+        options.forEach { (name, description, icon) ->
             ListItem(
-                headlineContent = { Text(headline) },
+                headlineContent = { Text(name) },
                 leadingContent = { Icon(icon, contentDescription = null) },
                 supportingContent = { Text(description) },
-                trailingContent = { RadioButton(selected = selectedOption == index, onClick = { selectedOption = index }) },
-                modifier = Modifier.clickable(onClick = { selectedOption = index })
+                trailingContent = { RadioButton(selected = state.trackingMode == name, onClick = { onEvent(EventActions.SetTrackingMode(name)) })},
+                modifier = Modifier.clickable(onClick = { onEvent(EventActions.SetTrackingMode(name)) })
             )
         }
     }
@@ -194,7 +191,7 @@ fun EventTracking(navController: NavController) {
 @Composable
 fun DurationPreview() {
     TimePilotDemoTheme {
-        EventDuration("Hello", rememberNavController())
+        //EventDuration("Hello", rememberNavController())
     }
 }
 
@@ -202,6 +199,6 @@ fun DurationPreview() {
 @Composable
 fun TrackingPreview() {
     TimePilotDemoTheme {
-        EventTracking(rememberNavController())
+        // EventTracking(rememberNavController())
     }
 }

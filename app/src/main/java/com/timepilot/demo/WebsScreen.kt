@@ -1,6 +1,5 @@
 package com.timepilot.demo
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,43 +29,52 @@ import androidx.compose.ui.unit.dp
 import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 
 @Composable
-fun WebsScreen() {
-    val blockedKeywords = remember { mutableListOf("tiktok", "youtube", "facebook") }
-    val allowedKeywords = remember { mutableListOf("coursera", "edx", "youtube.com/tech") }
+fun WebsScreen(
+    state: EventsStates,
+    onEvent: (EventActions) -> Unit,
+) {
     val suggestionChips = listOf("Block all websites", "TikTok", "YouTube", "Instagram")
 
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             WebsiteAddItem {
+                val blockedKeywords = state.blockedWebs.toMutableList()
                 blockedKeywords.add(0, "")
+                onEvent(EventActions.ChangeBlockedWebs(blockedKeywords))
             }
         }
 
-        items(blockedKeywords) { item ->
+        items(state.blockedWebs) { item ->
             if (item.isEmpty()) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 24.dp)) {
                     items(suggestionChips) { name ->
                         SuggestionChip(
                             onClick = {
+                                // blockedKeywords[0] = name
+                                val blockedKeywords = state.blockedWebs.toMutableList()
                                 blockedKeywords[0] = name
+                                onEvent(EventActions.ChangeBlockedWebs(blockedKeywords))
                             },
                             label = { Text(name) }
                         )
                     }
                 }
             }
-            WebsiteItem(item, false)
+            WebsiteItem(state, onEvent, item, false)
         }
 
         item {
             HorizontalDivider(Modifier.padding(top = 12.dp, bottom = 6.dp))
             WebsiteAddItem(true) {
+                // allowedKeywords.add(0, "")
+                val allowedKeywords = state.allowedWebs.toMutableList()
                 allowedKeywords.add(0, "")
+                onEvent(EventActions.ChangeAllowedWebs(allowedKeywords))
             }
         }
 
-        items(allowedKeywords) { item ->
-            WebsiteItem(item, true)
+        items(state.allowedWebs) { item ->
+            WebsiteItem(state, onEvent, item, true)
         }
     }
 }
@@ -88,13 +96,16 @@ fun WebsiteAddItem(allowedItem: Boolean = false, onClick: () -> Unit) {
 
 @Composable
 fun WebsiteItem(
+    state: EventsStates,
+    onEvent: (EventActions) -> Unit,
     itemName: String,
     allowedItem: Boolean = false,
 ) {
     ListItem(
         headlineContent = {
             CustomTextField(
-                initialText = itemName,
+                state = state,
+                onEvent = onEvent,
                 textStyle = MaterialTheme.typography.bodyLarge,
                 hint = if (!allowedItem) "Type blocked URL here..." else "Type exception URL here...",
                 onDone = {}
@@ -113,14 +124,16 @@ fun WebsiteItem(
 }
 
 @Composable
-fun CustomAppScreen() {
-
+fun CustomAppScreen(
+    state: EventsStates,
+    onEvent: (EventActions) -> Unit,
+) {
 }
 
 @Preview
 @Composable
 fun WebPreview() {
     TimePilotDemoTheme {
-        WebsScreen()
+        // WebsScreen()
     }
 }

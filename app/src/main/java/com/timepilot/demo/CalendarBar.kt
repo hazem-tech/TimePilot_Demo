@@ -1,7 +1,7 @@
 package com.timepilot.demo
 
+import android.util.Log
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -51,14 +51,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 import java.time.LocalDate
 import kotlin.math.absoluteValue
-import kotlin.math.pow
 
 @Composable
-fun CalendarBar(navController: NavController) {
+fun CalendarBar(
+    onEvent: (EventActions) -> Unit,
+    navController: NavController
+) {
     val pagerState = rememberPagerState(pageCount = { 260 }, initialPage = 130) // 5 yrs
     var selected by remember { mutableStateOf(LocalDate.now()) }
     var month by remember { mutableStateOf(selected) }
@@ -141,7 +142,8 @@ fun CalendarBar(navController: NavController) {
                 previousPage = page
                 selected = week[currentCellWeek]
                 if (month.month != selected.month) month = selected
-                // TODO() change list date
+                onEvent(EventActions.ChangeDay(selected.toString()))
+                Log.d("CalendarBar", "CalendarBar changed: $selected")
             }
 
             Row(modifier = Modifier.padding(horizontal = 9.dp)) {
@@ -220,6 +222,6 @@ fun DayView(modifier: Modifier = Modifier, date: LocalDate, selected: LocalDate,
 @Composable
 fun CalendarPreview() {
     TimePilotDemoTheme {
-        CalendarBar(rememberNavController())
+        // CalendarBar(rememberNavController())
     }
 }
