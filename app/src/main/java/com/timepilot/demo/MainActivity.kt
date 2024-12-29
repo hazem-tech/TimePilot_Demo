@@ -77,50 +77,15 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val colorsOptions = listOf(
-                    ColorOption(
-                        name = "Main",
-                        backgroundColor = if (!isSystemInDarkTheme()) colorResource(com.google.android.material.R.color.material_dynamic_secondary90)
-                        else colorResource(com.google.android.material.R.color.material_dynamic_secondary10),
-                        backgroundBarColor = if (!isSystemInDarkTheme()) colorResource(com.google.android.material.R.color.material_dynamic_primary80)
-                        else colorResource(com.google.android.material.R.color.material_dynamic_primary10),
-                        buttonColor = MaterialTheme.colorScheme.primary.copy(0.3f)
-                    ),
-                    ColorOption(
-                        name = "Red",
-                        backgroundColor = if (!isSystemInDarkTheme()) Color(0xFFFFD8D8) else Color(0xFF221818),
-                        backgroundBarColor = if (!isSystemInDarkTheme()) Color(0xFFFFC3C3) else Color(0xFF2E1214),
-                        buttonColor = if (!isSystemInDarkTheme()) Color(0xFFF4DFDF) else Color(0xFF3A212A)
-                    ),
-                    ColorOption(
-                        name = "Green",
-                        backgroundColor = if (!isSystemInDarkTheme()) Color(0xFFD3E8E9) else Color(0xFF000000),
-                        backgroundBarColor = Color.Black, // Simplified for consistent dark mode
-                        buttonColor = Color.Black
-                    ),
-                    ColorOption(
-                        name = "Blue",
-                        backgroundColor = if (!isSystemInDarkTheme()) Color(0xFFD8E3FF) else Color(0xFF15171D),
-                        backgroundBarColor = if (!isSystemInDarkTheme()) Color(0xFFB4CDFF) else Color(0xFF121A2D),
-                        buttonColor = if (!isSystemInDarkTheme()) Color(0xFFC7DCF5) else Color(0xFF20263A)
-                    ),
-                    ColorOption(
-                        name = "Yellow",
-                        backgroundColor = if (!isSystemInDarkTheme()) Color(0xFFEAE4D5) else Color(0xFF1F160E),
-                        backgroundBarColor = if (!isSystemInDarkTheme()) Color(0xFFF0CFA4) else Color(0xFF2A2010),
-                        buttonColor = if (!isSystemInDarkTheme()) Color(0xFFF6EEE0) else Color(0xFF3B321E)
-                    ),
-                    ColorOption(
-                        name = "Pink",
-                        backgroundColor = if (!isSystemInDarkTheme()) Color(0xFFFFD8ED) else Color.Black,
-                        backgroundBarColor = Color.Black,
-                        buttonColor = Color.Black
-                    ),
-                    ColorOption(
-                        name = "Purple",
-                        backgroundColor = if (!isSystemInDarkTheme()) Color(0xFFF1D8FF) else Color.Black,
-                        backgroundBarColor = Color.Black,
-                        buttonColor = Color.Black
-                    )
+                    Pair("Main",
+                        if (!isSystemInDarkTheme()) colorResource(com.google.android.material.R.color.material_dynamic_primary80)
+                        else colorResource(com.google.android.material.R.color.material_dynamic_primary10)),
+                    Pair("Red", if (!isSystemInDarkTheme()) Color(0xFFF5BABA) else Color(0xFF341314)),
+                    Pair("Green", if (!isSystemInDarkTheme()) Color(0xFFBAF5CC) else Color(0xFF143413) ),
+                    Pair("Blue", if (!isSystemInDarkTheme()) Color(0xFFB4CDFF) else Color(0xFF122038)),
+                    Pair("Yellow", if (!isSystemInDarkTheme()) Color(0xFFFDD9AB) else Color(0xFF443902)),
+                    Pair("Pink", if (!isSystemInDarkTheme()) Color(0xFFFFB1DB) else Color(0xFF341235)),
+                    Pair("Purple", if (!isSystemInDarkTheme()) Color(0xFFDEB7FF) else Color(0xFF23103D))
                 )
 
                 NavHost(

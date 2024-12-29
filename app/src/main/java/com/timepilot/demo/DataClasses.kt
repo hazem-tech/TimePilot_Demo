@@ -121,10 +121,3 @@ data class App(
     val icon: Painter,
     var added: MutableState<Boolean> = mutableStateOf(false)
 )
-
-data class ColorOption(
-    val name: String,
-    val backgroundColor: Color,
-    val backgroundBarColor: Color,
-    val buttonColor: Color
-)

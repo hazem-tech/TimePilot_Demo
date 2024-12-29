@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,12 +53,11 @@ fun EventCard(
     pauseOnClick: () -> Unit,
     markOnClick: () -> Unit,
     modifier: Modifier = Modifier,
-    colors: List<ColorOption>,
+    backgroundBarColor: Color,
     previewHideIcons: Boolean = false
 ) {
-    val backgroundColor = colors.find { it.name == event.eventColor }!!.backgroundColor
-    val backgroundBarColor = colors.find { it.name == event.eventColor }!!.backgroundBarColor
-    val buttonColor = colors.find { it.name == event.eventColor }!!.buttonColor
+    val backgroundColor = backgroundBarColor.copy(alpha = 0.6f)
+    val buttonColor = if (!isSystemInDarkTheme()) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.05f)
     val taskCompletePercentage = 100 // todo
 
     // or Surface, or Card, i have no idea
@@ -240,7 +240,7 @@ fun CardPreview() {
         EventCard(
             event = Event(date = "12-12-2025", position = 0),
             allowedApps = listOf(),
-            colors = listOf(ColorOption(name = "Main", backgroundColor = MaterialTheme.colorScheme.primaryContainer, backgroundBarColor = MaterialTheme.colorScheme.secondaryContainer, buttonColor = MaterialTheme.colorScheme.primary.copy(0.3f))),
+            backgroundBarColor = MaterialTheme.colorScheme.primaryContainer,
             startOnClick = {}, pauseOnClick = {}, markOnClick = {}, previewHideIcons = true
         )
     }

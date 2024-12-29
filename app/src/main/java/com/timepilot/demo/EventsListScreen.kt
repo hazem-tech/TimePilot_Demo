@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.platform.LocalView
@@ -63,7 +64,7 @@ fun EventsList(
     state: EventsStates,
     onEvent: (EventActions) -> Unit,
     allApps: List<App>,
-    colors: List<ColorOption>,
+    colors: List<Pair<String, Color>>,
     navController: NavController
 ) {
     val primaryColor = MaterialTheme.colorScheme.primaryContainer
@@ -126,7 +127,7 @@ fun EventsList(
                                     startOnClick = {},
                                     pauseOnClick = {},
                                     markOnClick = {},
-                                    colors = colors
+                                    backgroundBarColor = colors.find { it.first == event.eventColor }?.second ?: Color.Red,
                                 )
                             }
                         }

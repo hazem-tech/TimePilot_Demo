@@ -90,7 +90,7 @@ fun NewEvent(
     state: EventsStates,
     onEvent: (EventActions) -> Unit,
     sheetHeight: Float,
-    colors: List<ColorOption>,
+    colors: List<Pair<String,Color>>,
     navController: NavController
 ) {
     val oldEvent = state.copy()
@@ -212,7 +212,7 @@ fun NewEvent(
                     Button(
                         onClick = { expanded = !expanded },
                         shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.find { it.name == state.eventColor }!!.backgroundColor),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.find { it.first == state.eventColor }!!.second),
                         border = BorderStroke(width = 1.dp, color = Color.Gray),
                         content = {}
                     )
@@ -223,12 +223,12 @@ fun NewEvent(
                     ) {
                         colors.forEach { color ->
                             DropdownMenuItem(
-                                text = { Text(color.name) },
+                                text = { Text(color.first) },
                                 leadingIcon = {
-                                    Box(Modifier.size(25.dp).clip(CircleShape).background(color.backgroundColor))
+                                    Box(Modifier.size(25.dp).clip(CircleShape).background(color.second))
                                 },
                                 onClick = {
-                                    onEvent(EventActions.SetColor(color.name))
+                                    onEvent(EventActions.SetColor(color.first))
                                     expanded = false
                                 }
                             )
