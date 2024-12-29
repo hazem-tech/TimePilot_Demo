@@ -228,8 +228,8 @@ fun NewEvent(
                                     Box(Modifier.size(25.dp).clip(CircleShape).background(color.backgroundColor))
                                 },
                                 onClick = {
-                                    expanded = false
                                     onEvent(EventActions.SetColor(color.name))
+                                    expanded = false
                                 }
                             )
                         }
