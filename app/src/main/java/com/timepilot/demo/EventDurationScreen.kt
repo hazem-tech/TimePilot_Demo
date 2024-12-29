@@ -1,6 +1,5 @@
 package com.timepilot.demo
 
-import android.util.Log
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -32,7 +31,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -85,13 +83,7 @@ fun EventDuration(
                     state = if (i == 0) minPagerState else maxPagerState,
                     text = { index ->
                         val num = if (i == 0) minTimes[index] else maxTimes[index]
-                        val min = num % 60
-                        val hrs = num / 60
-                        when {
-                            hrs == 0 -> "$min min"
-                            min == 0 -> if (hrs == 1) "1 hr" else "$hrs hrs"
-                            else -> "${hrs}h ${min}m"
-                        }
+                        durationFormatting(num)
                     },
                     horizontal = true,
                     padding = PaddingValues(horizontal = 150.dp),
@@ -114,24 +106,17 @@ fun EventDuration(
                 )
             }
 
-            LaunchedEffect(minPagerState) {
-                snapshotFlow { minPagerState.settledPage }.collect { page ->
-                    onEvent(EventActions.SetMinTime(page))
-                    // todo actually affect data
+            LaunchedEffect(minPagerState.settledPage) {
+                onEvent(EventActions.SetMinTime(minTimes[minPagerState.settledPage]))
 
-                    maxCurrentValue = maxTimes[maxPagerState.currentPage]
-                    maxTimes = if (page > 0) minTimes.drop(page) else minTimes.drop(1) // max can't be zero
-                    maxPagerState.scrollToPage(
-                        if (maxTimes[0] <= maxCurrentValue) maxTimes.indexOf(maxCurrentValue) else 0
-                    )
-                    Log.d("minTimes", "$maxCurrentValue")
-                }
+                // affect max list
+                maxCurrentValue = maxTimes[maxPagerState.currentPage]
+                maxTimes = if (minPagerState.settledPage > 0) minTimes.drop(minPagerState.settledPage) else minTimes.drop(1) // max can't be zero
+                maxPagerState.scrollToPage(if (maxTimes[0] <= maxCurrentValue) maxTimes.indexOf(maxCurrentValue) else 0)
             }
 
-            LaunchedEffect(maxPagerState) {
-                snapshotFlow { maxPagerState.settledPage }.collect { page ->
-                    onEvent(EventActions.SetMaxTime(page))
-                }
+            LaunchedEffect(maxPagerState.settledPage) {
+                onEvent(EventActions.SetMaxTime(maxTimes[maxPagerState.settledPage]))
             }
         }
         HorizontalDivider()
@@ -143,13 +128,27 @@ fun EventDuration(
                     contentDescription = null,
                 )
             },
-            trailingContent = { Text("Countdown") },
+            trailingContent = { Text(state.trackingMode) },
             modifier = Modifier.clickable(onClick = {
                 navController.navigate("eventTrackingScreen") {
                     launchSingleTop = true
                 }
             })
         )
+    }
+}
+
+fun durationFormatting(num: Int, simple: Boolean = false): String {
+    val min = num % 60
+    val hrs = num / 60
+    return when {
+        hrs == 0 -> "$min" + if (!simple) " min" else "m"
+        min == 0 -> if (!simple) {
+            if (hrs == 1) "1 hr" else "$hrs hrs"
+        } else {
+            "${hrs}h"
+        }
+        else -> "${hrs}h ${min}m"
     }
 }
 

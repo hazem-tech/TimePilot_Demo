@@ -2,6 +2,8 @@ package com.timepilot.demo
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,8 +25,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,11 +32,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
@@ -44,24 +46,26 @@ import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 
 @Composable
 fun EventCard(
-    state: EventsStates,
-    modifier: Modifier = Modifier,
+    event: Event,
+    allowedApps: List<String>,
+    onEvent: (EventActions) -> Unit,
     startOnClick: () -> Unit,
     pauseOnClick: () -> Unit,
     markOnClick: () -> Unit,
+    modifier: Modifier = Modifier,
     colors: List<ColorOption>,
-    showIcons: Boolean = true
+    previewHideIcons: Boolean = false
 ) {
-    val backgroundColor = colors.find { it.name == state.eventColor }!!.backgroundBarColor
-    val backgroundBarColor = colors.find { it.name == state.eventColor }!!.backgroundColor
-    val buttonColor = colors.find { it.name == state.eventColor }!!.buttonColor
+    val backgroundColor = colors.find { it.name == event.eventColor }!!.backgroundColor
+    val backgroundBarColor = colors.find { it.name == event.eventColor }!!.backgroundBarColor
+    val buttonColor = colors.find { it.name == event.eventColor }!!.buttonColor
     val taskCompletePercentage = 100 // todo
-    val pm = LocalContext.current.packageManager
-    val eventState by remember { mutableStateOf("Start") } // todo
 
     Box( // or Surface, or Card, i have no idea
-        modifier = modifier.clip(RoundedCornerShape(18.dp))
-        // todo open up the sheet on onclick
+        modifier = modifier.clip(RoundedCornerShape(18.dp)).clickable {
+            onEvent(EventActions.SetUpStates(event))
+            onEvent(EventActions.ShowFullSheet(event.id))
+        }
     ) {
         Column (
             Modifier.background(
@@ -78,21 +82,21 @@ fun EventCard(
             Row(Modifier.padding(bottom = 20.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = state.eventName.ifBlank { "Untitled" },
+                        text = event.eventName.ifBlank { "Untitled" },
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    //if (isRepeatable) {
-                    Text(
-                        text = "Repeated every day",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    //}
+                    if (event.repeats.split(",")[0].toInt() > 0) {
+                        Text(
+                            text = "Repeated every ${event.repeats.split(",")[0].toInt()} ${if (event.repeats.split(",")[1].toInt() == 0) "days" else "weeks"}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Outlined.AccessTime,
@@ -100,7 +104,7 @@ fun EventCard(
                             contentDescription = null
                         )
                         Text(
-                            text = "20m - 30m",
+                            text = "${durationFormatting(event.minTime, true)} - ${durationFormatting(event.maxTime, true)}",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
                             maxLines = 1,
@@ -109,54 +113,13 @@ fun EventCard(
                     }
                 }
 
-                if (showIcons) {
-                    Row(
+                if (!previewHideIcons) {
+                    AppsIcons(
+                        allowedApps = allowedApps,
                         horizontalArrangement = Arrangement.spacedBy((-12).dp),
-                        modifier = Modifier.height(35.dp)
-                    ) {
-                        if (state.allowedApps.isNotEmpty()) {
-                            for (packageName in state.allowedApps.take(4)) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    // border, to get the same of a sample icon
-                                    Image(
-                                        bitmap = pm.getApplicationIcon("com.android.settings")
-                                            .toBitmap().asImageBitmap(),
-                                        contentDescription = null,
-                                        colorFilter = ColorFilter.tint(
-                                            backgroundColor,
-                                            BlendMode.SrcAtop
-                                        )
-                                    )
-
-                                    Image(
-                                        bitmap = pm.getApplicationIcon(packageName).toBitmap()
-                                            .asImageBitmap(),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(30.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        if (state.allowedApps.size !in 1..4) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Image(
-                                    bitmap = pm.getApplicationIcon("com.android.settings")
-                                        .toBitmap()
-                                        .asImageBitmap(),
-                                    contentDescription = null,
-                                    colorFilter = ColorFilter.tint(
-                                        MaterialTheme.colorScheme.surfaceContainerLow,
-                                        BlendMode.SrcAtop
-                                    )
-                                )
-                                Text(
-                                    text = if (state.allowedApps.size > 4) "%d+".format(state.allowedApps.size - 4) else "0",
-                                    fontSize = 13.sp
-                                ) // how many more apps other than the 4 shown
-                            }
-                        }
-                    }
+                        iconsSize = 30.dp,
+                        backgroundColor = backgroundColor
+                    )
                 }
             }
 
@@ -170,29 +133,106 @@ fun EventCard(
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ),
                     contentPadding = PaddingValues(horizontal = 24.dp),
-                    onClick = if (eventState == "Start") startOnClick else pauseOnClick
+                    onClick = if (event.eventStatus == 0) startOnClick else pauseOnClick
                 ) {
                     Icon(
-                        imageVector = if (eventState == "Start") Icons.Default.PlayArrow else Icons.Default.Pause,
+                        imageVector = if (event.eventStatus == 0) Icons.Default.PlayArrow else Icons.Default.Pause,
                         contentDescription = null
                     )
-                    Text(eventState, Modifier.padding(horizontal = 3.dp, vertical = 12.dp))
+                    Text(
+                        text = if (event.eventStatus == 0) "Start" else "Pause",
+                        modifier = Modifier.padding(horizontal = 3.dp, vertical = 12.dp)
+                    )
                 }
 
-                FilledTonalButton(
-                    colors = ButtonDefaults.elevatedButtonColors(
-                        containerColor = buttonColor,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    contentPadding = PaddingValues(horizontal = 24.dp),
-                    onClick = markOnClick
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.CheckCircle,
-                        contentDescription = null
-                    )
-                    Text(text = "Mark as done", Modifier.padding(start = 3.dp, top = 12.dp, bottom = 12.dp))
+                if (event.eventStatus != 0) { // show only after we start, even if it's gonna disabled
+                    FilledTonalButton(
+                        colors = ButtonDefaults.elevatedButtonColors(
+                            containerColor = buttonColor,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        contentPadding = PaddingValues(horizontal = 24.dp),
+                        onClick = markOnClick
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.CheckCircle,
+                            contentDescription = null
+                        )
+                        Text(
+                            text = "Mark as done",
+                            Modifier.padding(start = 3.dp, top = 12.dp, bottom = 12.dp)
+                        )
+                    }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun AppsIcons(
+    allowedApps: List<String>,
+    horizontalArrangement: Arrangement.Horizontal,
+    iconsSize: Dp,
+    backgroundColor: Color? = null,
+    onClick: () -> Unit = {},
+    minApps: Int = 1,
+    maxApps: Int = 4,
+    content: @Composable () -> Unit = {}
+) {
+    val pm = LocalContext.current.packageManager
+    Row(
+        horizontalArrangement = horizontalArrangement,
+        modifier = Modifier.height(iconsSize + 5.dp).clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick
+        )
+    ) {
+        content()
+
+        if (allowedApps.isNotEmpty()) {
+            for (packageName in allowedApps.take(maxApps)) {
+                Box(contentAlignment = Alignment.Center) {
+                    // border, to get the same of a sample icon
+                    if (backgroundColor != null) {
+                        Image(
+                            bitmap = pm.getApplicationIcon("com.android.settings")
+                                .toBitmap().asImageBitmap(),
+                            contentDescription = null,
+                            colorFilter = ColorFilter.tint(
+                                backgroundColor,
+                                BlendMode.SrcAtop
+                            )
+                        )
+                    }
+
+                    Image(
+                        bitmap = pm.getApplicationIcon(packageName).toBitmap()
+                            .asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.size(iconsSize)
+                    )
+                }
+            }
+        }
+
+        if (allowedApps.size !in minApps..maxApps) {
+            Box(contentAlignment = Alignment.Center) {
+                Image(
+                    bitmap = pm.getApplicationIcon("com.android.settings")
+                        .toBitmap()
+                        .asImageBitmap(),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(
+                        MaterialTheme.colorScheme.surfaceContainerLow,
+                        BlendMode.SrcAtop
+                    )
+                )
+                Text(
+                    text = if (allowedApps.size > maxApps) "%d+".format(allowedApps.size - maxApps) else "0",
+                    fontSize = 13.sp
+                )
             }
         }
     }
@@ -202,6 +242,11 @@ fun EventCard(
 @Composable
 fun CardPreview() {
     TimePilotDemoTheme {
-        //EventCard(showIcons = false, startOnClick = {}, pauseOnClick = {}, markOnClick = {})
+        EventCard(
+            event = Event(date = "12-12-2025"),
+            allowedApps = listOf(),
+            onEvent = {},
+            colors = listOf(ColorOption(name = "Main", backgroundColor = MaterialTheme.colorScheme.primaryContainer, backgroundBarColor = MaterialTheme.colorScheme.secondaryContainer, buttonColor = MaterialTheme.colorScheme.primary.copy(0.3f)
+        )), startOnClick = {}, pauseOnClick = {}, markOnClick = {}, previewHideIcons = true)
     }
 }

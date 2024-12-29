@@ -1,5 +1,6 @@
 package com.timepilot.demo
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,11 +20,8 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
         dao.getEvents(newDate)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
 
-    val state = combine(_state, _dateSelected, _events) { state, dateSelected, events ->
-        state.copy(
-            allEvent = events,
-            daySelected = dateSelected
-        )
+    val state = combine(_state, _dateSelected, _events) { state, _, events ->
+        state.copy(allEvent = events)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), EventsStates())
 
     fun onEvent(event: EventActions) {
@@ -38,24 +36,6 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
                     dao.deleteEvent(event.event)
                 }
             }
-            EventActions.SaveEvent -> {
-                _state.update {
-                    it.copy(isPartialSheet = false, isForcedSheet = false, isFullSheet = false)
-                }
-                val newEvent = Event(
-                    eventName = state.value.eventName,
-                    date = state.value.date,
-                    minTime = state.value.minTime,
-                    maxTime = state.value.maxTime,
-                    trackingMode = state.value.trackingMode,
-                    anyTimeEvent = state.value.anyTimeTask,
-                    eventColor = state.value.eventColor,
-                    repeats = state.value.repeats
-                )
-                viewModelScope.launch {
-                    dao.upsertEvent(newEvent)
-                }
-            }
             is EventActions.ChangeDate -> {
                 _state.update {
                     it.copy(date = event.date)
@@ -66,26 +46,31 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
                 _state.update {
                     it.copy(minTime = event.minTime)
                 }
+                Log.d("EventActions", "SetMinTime: ${event.minTime}")
             }
             is EventActions.SetMaxTime -> {
                 _state.update {
                     it.copy(maxTime = event.maxTime)
                 }
+                Log.d("EventActions", "SetMaxTime: ${event.maxTime}")
             }
             is EventActions.SetTrackingMode -> {
                 _state.update {
                     it.copy(trackingMode = event.trackingMode)
                 }
+                Log.d("EventActions", "SetTrackingMode: ${event.trackingMode}")
             }
             is EventActions.ChangeAnytime -> {
                 _state.update {
                     it.copy(anyTimeTask = event.anyTimeTask)
                 }
+                Log.d("EventActions", "ChangeAnytime: ${event.anyTimeTask}")
             }
             is EventActions.SetRepeat -> {
                 _state.update {
                     it.copy(repeats = event.frequencyDaysList)
                 }
+                Log.d("EventActions", "SetRepeat: ${event.frequencyDaysList}")
             }
             is EventActions.SetColor -> {
                 _state.update {
@@ -112,14 +97,40 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
                 TODO()
             }
 
-            EventActions.HideSheet -> {
+            is EventActions.HideSheet -> {
+                if (event.saveEvent) {
+                    val newEvent = Event(
+                        eventName = state.value.eventName,
+                        date = state.value.date,
+                        minTime = state.value.minTime,
+                        maxTime = state.value.maxTime,
+                        trackingMode = state.value.trackingMode,
+                        anyTimeEvent = state.value.anyTimeTask,
+                        eventColor = state.value.eventColor,
+                        repeats = state.value.repeats
+                    )
+                    // only upsert if the new event is not empty and not the same as a new event, diff id and date is not enough to save
+                    if (newEvent.copy(id = 0, date = "") != Event(id = 0, date = "")) {
+                        if (state.value.alreadyCreatedEvent != null) {
+                            newEvent.id = state.value.alreadyCreatedEvent!!
+                        }
+                        viewModelScope.launch {
+                            dao.upsertEvent(newEvent)
+                        }
+                    }
+                }
                 _state.update {
-                    it.copy(isPartialSheet = false, isForcedSheet = false, isFullSheet = false)
+                    it.copy(isPartialSheet = false, isForcedSheet = false, isFullSheet = false, alreadyCreatedEvent = null)
                 }
             }
-            EventActions.ShowFullSheet -> {
+            is EventActions.ShowFullSheet -> {
                 _state.update {
                     it.copy(isPartialSheet = false, isForcedSheet = false, isFullSheet = true)
+                }
+                if (event.eventID != null) {
+                    _state.update {
+                        it.copy(alreadyCreatedEvent = event.eventID)
+                    }
                 }
             }
             EventActions.ShowForceFullSheet -> {
@@ -135,6 +146,21 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
 
             is EventActions.ChangeDay -> {
                 _dateSelected.value = event.newDay
+            }
+
+            is EventActions.SetUpStates -> {
+                _state.update {
+                    it.copy(
+                        eventName = event.event.eventName,
+                        date = event.event.date,
+                        anyTimeTask = event.event.anyTimeEvent,
+                        minTime = event.event.minTime,
+                        maxTime = event.event.maxTime,
+                        trackingMode = event.event.trackingMode,
+                        eventColor = event.event.eventColor,
+                        repeats = event.event.repeats
+                    )
+                }
             }
         }
     }

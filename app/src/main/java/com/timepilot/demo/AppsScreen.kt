@@ -93,6 +93,7 @@ fun AppsWebsScreen(
 ) {
     var selectedIndex by remember { mutableIntStateOf(0) }
     val options = listOf("Apps", "Websites", "Custom")
+    onEvent(EventActions.ShowForceFullSheet)
 
     Column(Modifier.background(MaterialTheme.colorScheme.background)) {
         CenterAlignedTopAppBar(
@@ -204,7 +205,7 @@ fun AppsScreen(
 
                 if (filteredList.isEmpty()) {
                     Text(
-                        text = "No result for $searchQuery",
+                        text = "No result for ${searchQuery.value}",
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(30.dp)
                     )

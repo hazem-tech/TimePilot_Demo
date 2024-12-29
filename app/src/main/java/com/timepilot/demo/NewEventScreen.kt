@@ -75,6 +75,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -89,15 +90,16 @@ fun NewEvent(
     state: EventsStates,
     onEvent: (EventActions) -> Unit,
     sheetHeight: Float,
-    newOne: Boolean,
     colors: List<ColorOption>,
     navController: NavController
 ) {
+    val oldEvent = state.copy()
     val focusManager = LocalFocusManager.current
     var hideMoreOptions by remember { mutableStateOf(true) }
     var fullScreenItemsShown by remember { mutableFloatStateOf(0f) }
     val openDateDialog = remember { mutableStateOf(false) }
     val openCancelAlertDialog = remember { mutableStateOf(false) }
+    val openDeleteAlertDialog = remember { mutableStateOf(false) }
 
     Column {
         Row(
@@ -114,32 +116,21 @@ fun NewEvent(
                 TopButton("Cancel") {
                     focusManager.clearFocus()
                     // if nothing changed do not show dialog
-                    if (true) {
+                    if (oldEvent != state) {
                         openCancelAlertDialog.value = true
                     } else {
-                        onEvent(EventActions.HideSheet)
+                        onEvent(EventActions.HideSheet(false))
                     }
                 }
                 if (openCancelAlertDialog.value) {
-                    AlertDialog(
-                        title = {
-                            Text("Are you sure you want to cancel?")
-                        },
+                    SimpleAlertDialog(
                         onDismissRequest = { openCancelAlertDialog.value = false },
-                        confirmButton = {
-                            TextButton(
-                                onClick = { onEvent(EventActions.HideSheet) }
-                            ) {
-                                Text("Discard changes")
-                            }
+                        onConfirmation = {
+                            openCancelAlertDialog.value = false
+                            onEvent(EventActions.HideSheet(true))
                         },
-                        dismissButton = {
-                            TextButton(
-                                onClick = { openCancelAlertDialog.value = false }
-                            ) {
-                                Text("Back")
-                            }
-                        }
+                        dialogTitle = "Are you sure you want to cancel changes?",
+                        mainButton = "Cancel"
                     )
                 }
             }
@@ -150,7 +141,7 @@ fun NewEvent(
             ) {
                 TopButton("Save", FontWeight.Medium) {
                     focusManager.clearFocus()
-                    onEvent(EventActions.SaveEvent)
+                    onEvent(EventActions.HideSheet(true))
                 }
             }
         }
@@ -194,7 +185,7 @@ fun NewEvent(
                             if (it.isFocused)
                                 onEvent(EventActions.ShowForceFullSheet)
                             else if (state.isForcedSheet)
-                                onEvent(EventActions.ShowFullSheet)
+                                onEvent(EventActions.ShowFullSheet(state.alreadyCreatedEvent))
                         }
                         .alpha(
                             if (i == 0) {
@@ -205,7 +196,7 @@ fun NewEvent(
                         ),
                     onDone = {
                         focusManager.clearFocus()
-                        onEvent(EventActions.ShowFullSheet) // not forced anymore
+                        onEvent(EventActions.ShowFullSheet(state.alreadyCreatedEvent)) // not forced anymore
                     }
                 )
             }
@@ -221,7 +212,7 @@ fun NewEvent(
                     Button(
                         onClick = { expanded = !expanded },
                         shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.find { it.name == state.eventColor }!!.backgroundColor),
                         border = BorderStroke(width = 1.dp, color = Color.Gray),
                         content = {}
                     )
@@ -234,15 +225,11 @@ fun NewEvent(
                             DropdownMenuItem(
                                 text = { Text(color.name) },
                                 leadingIcon = {
-                                    Box(
-                                        Modifier
-                                            .size(25.dp)
-                                            .clip(CircleShape)
-                                            .background(color.backgroundBarColor))
+                                    Box(Modifier.size(25.dp).clip(CircleShape).background(color.backgroundColor))
                                 },
                                 onClick = {
                                     expanded = false
-                                    EventActions.SetColor(color.name)
+                                    onEvent(EventActions.SetColor(color.name))
                                 }
                             )
                         }
@@ -251,22 +238,25 @@ fun NewEvent(
             }
         }
 
-        // TODO() change look when there are apps selected, maybe show max of 5?
         ListItem(headlineContent = {
-            FilledTonalButton(
-                onClick = {
-                    navController.navigate("appsWebsScreen") {
-                        launchSingleTop = true
-                    }
-                    onEvent(EventActions.ShowForceFullSheet)
-                },
-                contentPadding = PaddingValues(horizontal = 26.dp, vertical = 11.dp)
+            AppsIcons(
+                allowedApps = state.allowedApps.reversed(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                iconsSize = 47.dp,
+                minApps = 0,
+                onClick = { navController.navigate("appsWebsScreen") { launchSingleTop = true } }
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Add,
-                    contentDescription = null,
-                )
-                Text("Add apps")
+                FilledTonalButton(
+                    onClick = { navController.navigate("appsWebsScreen") { launchSingleTop = true } },
+                    contentPadding = if (state.allowedApps.isEmpty()) PaddingValues(horizontal = 26.dp, vertical = 11.dp) else PaddingValues(0.dp),
+                    modifier = if (state.allowedApps.isEmpty()) Modifier else Modifier.size(47.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = null,
+                    )
+                    if (state.allowedApps.isEmpty()) Text("Add apps")
+                }
             }
         })
 
@@ -278,7 +268,7 @@ fun NewEvent(
                     contentDescription = null,
                 )
             },
-            trailingContent = { Text("15m - 30m") },
+            trailingContent = { Text("${durationFormatting(state.minTime)} - ${durationFormatting(state.maxTime)}") },
             modifier = Modifier.clickable(onClick = {
                 navController.navigate("eventDuration") {
                     launchSingleTop = true
@@ -303,7 +293,15 @@ fun NewEvent(
                             contentDescription = null,
                         )
                     },
-                    trailingContent = { Text("Never") },
+                    trailingContent = {
+                        Text(
+                            text = if (state.repeats.split(",")[0].toInt() == 0) {
+                                "Never"
+                            } else {
+                                "every ${state.repeats.split(",")[0].toInt()} ${if (state.repeats.split(",")[1].toInt() == 0) "days" else "weeks"}"
+                            }
+                        )
+                    },
                     modifier = Modifier.clickable(onClick = {
                         navController.navigate("eventRepeat") {
                             launchSingleTop = true
@@ -341,7 +339,7 @@ fun NewEvent(
                     modifier = Modifier.clickable(onClick = { onEvent(EventActions.ChangeAnytime(!state.anyTimeTask)) }) // todo show popup explain first time
                 )
 
-                if (!newOne) {
+                if (state.alreadyCreatedEvent != null) {
                     ListItem(
                         headlineContent = { Text("Delete") },
                         colors = ListItemDefaults.colors(
@@ -354,10 +352,20 @@ fun NewEvent(
                                 contentDescription = null,
                             )
                         },
-                        modifier = Modifier.clickable(onClick = {
-                            // TODO() delete event
-                        })
+                        modifier = Modifier.clickable(onClick = { openDeleteAlertDialog.value = true })
                     )
+                    if (openDeleteAlertDialog.value) {
+                        SimpleAlertDialog(
+                            onDismissRequest = { openDeleteAlertDialog.value = false },
+                            onConfirmation = {
+                                openDeleteAlertDialog.value = false
+                                onEvent(EventActions.DeleteEvent(state.allEvent.first { it.id == state.alreadyCreatedEvent }))
+                                onEvent(EventActions.HideSheet(false))
+                            },
+                            dialogTitle = "Are you sure you want to delete ${state.eventName}?",
+                            mainButton = "Delete"
+                        )
+                    }
                 }
             }
         }
@@ -386,7 +394,7 @@ fun NewEvent(
         val currentBackStackEntry by navController.currentBackStackEntryAsState()
         if (currentBackStackEntry?.destination?.route == "eventSheet") {
             if (state.isPartialSheet)
-                BackHandler { onEvent(EventActions.HideSheet) }
+                BackHandler { onEvent(EventActions.HideSheet(true)) }
             else if (state.isFullSheet)
                 BackHandler { onEvent(EventActions.ShowPartialSheet) }
         }
@@ -423,7 +431,7 @@ fun CustomTextField(
     hint: String,
     modifier: Modifier = Modifier,
     textStyle: TextStyle
-    ) {
+) {
     BasicTextField(
         value = state.eventName,
         onValueChange = { onEvent(EventActions.SetEventName(it)) },
@@ -442,6 +450,41 @@ fun CustomTextField(
         singleLine = true,
         keyboardActions = KeyboardActions(onDone = { onDone() }),
         modifier = modifier
+    )
+}
+
+@Composable
+fun SimpleAlertDialog(
+    onDismissRequest: () -> Unit,
+    onConfirmation: () -> Unit,
+    dialogTitle: String,
+    mainButton: String
+) {
+    AlertDialog(
+        title = {
+            Text(text = dialogTitle)
+        },
+        onDismissRequest = {
+            onDismissRequest()
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirmation()
+                }
+            ) {
+                Text(mainButton)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onDismissRequest()
+                }
+            ) {
+                Text("Back")
+            }
+        }
     )
 }
 
@@ -482,7 +525,7 @@ fun CustomBottomSheet(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = {
-                            onEvent(EventActions.HideSheet)
+                            onEvent(EventActions.HideSheet(true))
                             sheetHeight = hiddenHeight
                         }
                     )
@@ -520,13 +563,13 @@ fun CustomBottomSheet(
                             onDragStopped = {
                                 sheetHeight = when {
                                     currentHeight > fullHeight * 0.7f -> {
-                                        if (!state.isForcedSheet) onEvent(EventActions.ShowFullSheet)
+                                        if (!state.isForcedSheet) onEvent(EventActions.ShowFullSheet(state.alreadyCreatedEvent))
                                         fullHeight
                                     }
 
                                     currentHeight < fullHeight * 0.3f -> {
                                         if (!state.isForcedSheet) {
-                                            onEvent(EventActions.HideSheet)
+                                            onEvent(EventActions.HideSheet(true))
                                             hiddenHeight
                                         } else {
                                             fullHeight
@@ -591,6 +634,12 @@ fun DatePickerModal(
 @Composable
 fun SheetPreview() {
     TimePilotDemoTheme {
-        // NewEvent(fullyExpanded, { }, 800f, true, rememberNavController())
+        NewEvent(
+            state = EventsStates(),
+            onEvent = { },
+            sheetHeight = 800f,
+            colors = listOf(),
+            navController = rememberNavController()
+        )
     }
 }

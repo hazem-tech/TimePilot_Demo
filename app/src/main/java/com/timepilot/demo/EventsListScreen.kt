@@ -8,6 +8,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +32,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -49,6 +55,7 @@ import androidx.navigation.compose.rememberNavController
 import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import java.time.LocalDate
 
 @Composable
 fun EventsList(
@@ -72,6 +79,8 @@ fun EventsList(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
             view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_FREQUENT_TICK)
     }
+    var selected by remember { mutableStateOf(LocalDate.now()) }
+    var lastSelected = LocalDate.now()
 
     Scaffold(contentColor = MaterialTheme.colorScheme.onSurface) { innerPadding ->
         Box(modifier = Modifier
@@ -80,7 +89,7 @@ fun EventsList(
             // TODO() the lazy column for the events and the calendar cells works with slide animation
 
             Column {
-                CalendarBar(onEvent, navController)
+                CalendarBar(selected, { selected = it }, onEvent, navController)
                 AnimatedVisibility(state.allEvent.isNotEmpty()) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -93,10 +102,12 @@ fun EventsList(
                         ),
                         verticalArrangement = Arrangement.spacedBy(9.dp),
                     ) {
-                        items(state.allEvent, key = { it.id }) {
-                            ReorderableItem(reorderableLazyListState, key = it) { // isDragging ->
+                        items(state.allEvent, key = { it.id }) { event ->
+                            ReorderableItem(reorderableLazyListState, key = event) { // isDragging ->
                                 EventCard(
-                                    state = state,
+                                    event = event,
+                                    allowedApps = state.allowedApps,
+                                    onEvent = onEvent,
                                     modifier = Modifier.longPressDraggableHandle(
                                         onDragStarted = {
                                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
@@ -107,9 +118,7 @@ fun EventsList(
                                                 view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                                         },
                                     ),
-                                    startOnClick = {
-                                        // TODO()
-                                    },
+                                    startOnClick = {},
                                     pauseOnClick = {},
                                     markOnClick = {},
                                     colors = colors
@@ -120,7 +129,15 @@ fun EventsList(
                 }
             }
 
-            AnimatedVisibility(state.allEvent.isEmpty()) {
+            AnimatedVisibility(
+                visible = state.allEvent.isEmpty(),
+                enter = slideInHorizontally(
+                    initialOffsetX = { if (lastSelected > selected) -it else it },
+                    animationSpec = tween(300, easing = customEasing)),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { if (lastSelected > selected) it else -it },
+                    animationSpec = tween(300, easing = customEasing))
+            ) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
@@ -136,6 +153,7 @@ fun EventsList(
                         modifier = Modifier.padding(30.dp)
                     )
                 }
+                lastSelected = selected
             }
 
             Button(
@@ -148,7 +166,7 @@ fun EventsList(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 100.dp)
                     .border(
-                        2.dp, Brush.horizontalGradient(
+                        1.dp, Brush.horizontalGradient(
                             listOf(
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
                                 MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
@@ -179,7 +197,10 @@ fun EventsList(
                             )
                         }
                     },
-                onClick = { onEvent(EventActions.ShowPartialSheet) }
+                onClick = {
+                    onEvent(EventActions.SetUpStates(Event(date = selected.toString())))
+                    onEvent(EventActions.ShowPartialSheet)
+                }
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Add,
@@ -233,7 +254,7 @@ fun EventsList(
                 }
             ) {
                 composable("eventSheet") {
-                    NewEvent(state = state, onEvent = onEvent, sheetHeight = sheetHeight, newOne = true, colors = colors, navController = sheetNavController)
+                    NewEvent(state = state, onEvent = onEvent, sheetHeight = sheetHeight, colors = colors, navController = sheetNavController)
                 }
 
                 composable("appsWebsScreen") {
@@ -264,6 +285,13 @@ fun EventsList(
 @Composable
 fun GreetingPreview() {
     TimePilotDemoTheme {
-        // EventsList(listOf(), rememberNavController())
+        // EventsList(colors= ColorOption(
+        //                        name = "Main",
+        //                        backgroundColor = if (!isSystemInDarkTheme()) colorResource(com.google.android.material.R.color.material_dynamic_secondary90)
+        //                        else colorResource(com.google.android.material.R.color.material_dynamic_secondary10),
+        //                        backgroundBarColor = if (!isSystemInDarkTheme()) colorResource(com.google.android.material.R.color.material_dynamic_primary80)
+        //                        else colorResource(com.google.android.material.R.color.material_dynamic_primary10),
+        //                        buttonColor = MaterialTheme.colorScheme.primary.copy(0.3f)
+        //                    ), rememberNavController())
     }
 }

@@ -21,8 +21,9 @@ data class Event(
     var anyTimeEvent: Boolean = false,
     var eventColor: String = "Main",
     var repeats: String = "0,0", // 0 times, 0 = daily, 1 = weekly as a comma-separated string
+    var eventStatus: Int = 0, // 0 = never started, 1 = in progress, 2 = finished
     @PrimaryKey(autoGenerate = true)
-    val id: Int = 0
+    var id: Int = 0
 )
 
 @Entity(
@@ -69,7 +70,6 @@ data class AllowedWebsites(
 
 data class EventsStates(
     val allEvent: List<Event> = emptyList(),
-    val daySelected: String = LocalDate.now().toString(),
     val eventName: String = "",
     val date: String = LocalDate.now().toString(),
     val anyTimeTask: Boolean = false,
@@ -84,11 +84,17 @@ data class EventsStates(
     var customApps: List<String> = listOf(),
     var isPartialSheet: Boolean = false,
     var isFullSheet: Boolean = false,
-    var isForcedSheet: Boolean = false
+    var isForcedSheet: Boolean = false,
+    var alreadyCreatedEvent: Int? = null
 )
 
 sealed interface EventActions {
-    data object SaveEvent: EventActions
+    data class ChangeDay(val newDay: String): EventActions
+    data class HideSheet(val saveEvent: Boolean): EventActions
+    data object ShowPartialSheet: EventActions
+    data class ShowFullSheet(val eventID: Int?): EventActions
+    data object ShowForceFullSheet: EventActions
+    data class SetUpStates(val event: Event): EventActions
     data class SetEventName(val eventName: String): EventActions
     data class ChangeDate(val date: String): EventActions
     data class ChangeAnytime(val anyTimeTask: Boolean): EventActions
@@ -102,11 +108,6 @@ sealed interface EventActions {
     data class ChangeAllowedWebs(val allowedWebsites: List<String>): EventActions
     data class SetCustomApps(val youtube: List<String>): EventActions
     data class DeleteEvent(val event: Event): EventActions
-    data object ShowPartialSheet: EventActions
-    data object ShowFullSheet: EventActions
-    data object ShowForceFullSheet: EventActions
-    data object HideSheet: EventActions
-    data class ChangeDay(val newDay: String): EventActions
 }
 
 

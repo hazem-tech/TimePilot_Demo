@@ -36,6 +36,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -47,6 +48,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
@@ -58,8 +60,8 @@ fun RepeatScreen(
     onEvent: (EventActions) -> Unit,
     navController: NavController
 ) {
-    val numState = rememberPagerState(pageCount = { 48 }, initialPage = state.repeats[0].code)
-    val typeState = rememberPagerState(pageCount = { 2 }, initialPage = state.repeats[1].code)
+    val numState = rememberPagerState(pageCount = { 48 }, initialPage = state.repeats.split(",")[0].toInt())
+    val typeState = rememberPagerState(pageCount = { 2 }, initialPage = state.repeats.split(",")[1].toInt())
     val numList = (0..48).toList()
 
     Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -122,6 +124,18 @@ fun RepeatScreen(
                         CircleShape
                     )
             )
+        }
+
+        LaunchedEffect(numState.settledPage) {
+            val repeating = state.repeats.split(",").toMutableList()
+            repeating[0] = numState.settledPage.toString()
+            onEvent(EventActions.SetRepeat(repeating.joinToString(",")))
+        }
+
+        LaunchedEffect(typeState.settledPage) {
+            val repeating = state.repeats.split(",").toMutableList()
+            repeating[1] = numState.settledPage.toString()
+            onEvent(EventActions.SetRepeat(repeating.joinToString(",")))
         }
 
         AnimatedVisibility(visible = typeState.currentPage == 1 && numState.currentPage > 0) {
@@ -213,6 +227,6 @@ fun NumPicker(modifier: Modifier = Modifier, state: PagerState, text: (Int) -> S
 @Composable
 fun RepeatPreview() {
     TimePilotDemoTheme {
-        // RepeatScreen("Hello", rememberNavController())
+        RepeatScreen(state = EventsStates(), onEvent = {}, navController = rememberNavController())
     }
 }

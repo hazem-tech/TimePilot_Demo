@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
                         else colorResource(com.google.android.material.R.color.material_dynamic_secondary10),
                         backgroundBarColor = if (!isSystemInDarkTheme()) colorResource(com.google.android.material.R.color.material_dynamic_primary80)
                         else colorResource(com.google.android.material.R.color.material_dynamic_primary10),
-                        buttonColor = MaterialTheme.colorScheme.primaryContainer
+                        buttonColor = MaterialTheme.colorScheme.primary.copy(0.3f)
                     ),
                     ColorOption(
                         name = "Red",
