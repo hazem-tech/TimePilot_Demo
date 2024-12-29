@@ -48,7 +48,6 @@ import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 fun EventCard(
     event: Event,
     allowedApps: List<String>,
-    onEvent: (EventActions) -> Unit,
     startOnClick: () -> Unit,
     pauseOnClick: () -> Unit,
     markOnClick: () -> Unit,
@@ -61,12 +60,8 @@ fun EventCard(
     val buttonColor = colors.find { it.name == event.eventColor }!!.buttonColor
     val taskCompletePercentage = 100 // todo
 
-    Box( // or Surface, or Card, i have no idea
-        modifier = modifier.clip(RoundedCornerShape(18.dp)).clickable {
-            onEvent(EventActions.SetUpStates(event))
-            onEvent(EventActions.ShowFullSheet(event.id))
-        }
-    ) {
+    // or Surface, or Card, i have no idea
+    Box(modifier.clip(RoundedCornerShape(18.dp))) {
         Column (
             Modifier.background(
                 Brush.linearGradient(
@@ -243,10 +238,10 @@ fun AppsIcons(
 fun CardPreview() {
     TimePilotDemoTheme {
         EventCard(
-            event = Event(date = "12-12-2025"),
+            event = Event(date = "12-12-2025", position = 0),
             allowedApps = listOf(),
-            onEvent = {},
-            colors = listOf(ColorOption(name = "Main", backgroundColor = MaterialTheme.colorScheme.primaryContainer, backgroundBarColor = MaterialTheme.colorScheme.secondaryContainer, buttonColor = MaterialTheme.colorScheme.primary.copy(0.3f)
-        )), startOnClick = {}, pauseOnClick = {}, markOnClick = {}, previewHideIcons = true)
+            colors = listOf(ColorOption(name = "Main", backgroundColor = MaterialTheme.colorScheme.primaryContainer, backgroundBarColor = MaterialTheme.colorScheme.secondaryContainer, buttonColor = MaterialTheme.colorScheme.primary.copy(0.3f))),
+            startOnClick = {}, pauseOnClick = {}, markOnClick = {}, previewHideIcons = true
+        )
     }
 }

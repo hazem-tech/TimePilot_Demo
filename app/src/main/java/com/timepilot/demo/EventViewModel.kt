@@ -16,9 +16,8 @@ import kotlinx.coroutines.launch
 class EventsViewModel(private val dao: EventDao): ViewModel() {
     private val _state = MutableStateFlow(EventsStates())
     private val _dateSelected = MutableStateFlow(String.toString())
-    private val _events = _dateSelected.flatMapLatest { newDate ->
-        dao.getEvents(newDate)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
+    private val _events = _dateSelected.flatMapLatest { newDate -> dao.getEvents(newDate) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
 
     val state = combine(_state, _dateSelected, _events) { state, _, events ->
         state.copy(allEvent = events)
@@ -107,10 +106,11 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
                         trackingMode = state.value.trackingMode,
                         anyTimeEvent = state.value.anyTimeTask,
                         eventColor = state.value.eventColor,
-                        repeats = state.value.repeats
+                        repeats = state.value.repeats,
+                        position = state.value.position
                     )
                     // only upsert if the new event is not empty and not the same as a new event, diff id and date is not enough to save
-                    if (newEvent.copy(id = 0, date = "") != Event(id = 0, date = "")) {
+                    if (newEvent.copy(id = 0, date = "", position = 0) != Event(id = 0, date = "", position = 0)) {
                         if (state.value.alreadyCreatedEvent != null) {
                             newEvent.id = state.value.alreadyCreatedEvent!!
                         }
@@ -158,8 +158,15 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
                         maxTime = event.event.maxTime,
                         trackingMode = event.event.trackingMode,
                         eventColor = event.event.eventColor,
-                        repeats = event.event.repeats
+                        repeats = event.event.repeats,
+                        position = event.event.position
                     )
+                }
+            }
+
+            is EventActions.ChangeEventPosition -> {
+                viewModelScope.launch {
+                    dao.updateEvent(event.event)
                 }
             }
         }

@@ -1,8 +1,6 @@
 package com.timepilot.demo
 
 import android.graphics.BlurMaskFilter
-import android.os.Build
-import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -12,6 +10,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +46,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.HapticFeedbackConstantsCompat
+import androidx.core.view.ViewCompat
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -67,17 +68,13 @@ fun EventsList(
 ) {
     val primaryColor = MaterialTheme.colorScheme.primaryContainer
     val secondaryColor = MaterialTheme.colorScheme.secondaryContainer
-
     val view = LocalView.current
     val lazyListState = rememberLazyListState()
     val reorderableLazyListState = rememberReorderableLazyListState(lazyListState) { from, to ->
-//        list = list.toMutableList().apply {
-//            add(to.index, removeAt(from.index))
-//        }
-        // todo how to sort
+        onEvent(EventActions.ChangeEventPosition(state.allEvent[from.index].copy(position = to.index)))
+        onEvent(EventActions.ChangeEventPosition(state.allEvent[to.index].copy(position = from.index)))
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-            view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_FREQUENT_TICK)
+        ViewCompat.performHapticFeedback(view, HapticFeedbackConstantsCompat.SEGMENT_FREQUENT_TICK)
     }
     var selected by remember { mutableStateOf(LocalDate.now()) }
     var lastSelected = LocalDate.now()
@@ -102,22 +99,30 @@ fun EventsList(
                         ),
                         verticalArrangement = Arrangement.spacedBy(9.dp),
                     ) {
-                        items(state.allEvent, key = { it.id }) { event ->
-                            ReorderableItem(reorderableLazyListState, key = event) { // isDragging ->
+                        items(state.allEvent.sortedBy { it.position }, key = { it.id }) { event ->
+                            ReorderableItem(reorderableLazyListState, key = event.id) {
                                 EventCard(
                                     event = event,
                                     allowedApps = state.allowedApps,
-                                    onEvent = onEvent,
-                                    modifier = Modifier.longPressDraggableHandle(
-                                        onDragStarted = {
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                                                view.performHapticFeedback(HapticFeedbackConstants.DRAG_START)
-                                        },
-                                        onDragStopped = {
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                                                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                        },
-                                    ),
+                                    modifier = Modifier
+                                        .clickable {
+                                            onEvent(EventActions.SetUpStates(event))
+                                            onEvent(EventActions.ShowFullSheet(event.id))
+                                        }
+                                        .longPressDraggableHandle(
+                                            onDragStarted = {
+                                                ViewCompat.performHapticFeedback(
+                                                    view,
+                                                    HapticFeedbackConstantsCompat.GESTURE_START
+                                                )
+                                            },
+                                            onDragStopped = {
+                                                ViewCompat.performHapticFeedback(
+                                                    view,
+                                                    HapticFeedbackConstantsCompat.GESTURE_END
+                                                )
+                                            },
+                                        ),
                                     startOnClick = {},
                                     pauseOnClick = {},
                                     markOnClick = {},
@@ -198,7 +203,11 @@ fun EventsList(
                         }
                     },
                 onClick = {
-                    onEvent(EventActions.SetUpStates(Event(date = selected.toString())))
+                    onEvent(EventActions.SetUpStates(
+                        Event(date = selected.toString(),
+                            position = state.allEvent.map { it.date == selected.toString() }.size // size of current date position
+                        )
+                    ))
                     onEvent(EventActions.ShowPartialSheet)
                 }
             ) {

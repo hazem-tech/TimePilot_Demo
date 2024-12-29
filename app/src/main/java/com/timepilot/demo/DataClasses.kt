@@ -22,6 +22,7 @@ data class Event(
     var eventColor: String = "Main",
     var repeats: String = "0,0", // 0 times, 0 = daily, 1 = weekly as a comma-separated string
     var eventStatus: Int = 0, // 0 = never started, 1 = in progress, 2 = finished
+    var position: Int,
     @PrimaryKey(autoGenerate = true)
     var id: Int = 0
 )
@@ -82,6 +83,7 @@ data class EventsStates(
     var blockedWebs: List<String> = listOf(),
     var allowedWebs: List<String> = listOf(),
     var customApps: List<String> = listOf(),
+    var position: Int = 0,
     var isPartialSheet: Boolean = false,
     var isFullSheet: Boolean = false,
     var isForcedSheet: Boolean = false,
@@ -107,6 +109,7 @@ sealed interface EventActions {
     data class ChangeBlockedWebs(val blockedWebsites: List<String>): EventActions
     data class ChangeAllowedWebs(val allowedWebsites: List<String>): EventActions
     data class SetCustomApps(val youtube: List<String>): EventActions
+    data class ChangeEventPosition(val event: Event): EventActions
     data class DeleteEvent(val event: Event): EventActions
 }
 
