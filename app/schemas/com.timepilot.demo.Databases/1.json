@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "e59e306d1a4ea1f73905d56d6f63faae",
+    "identityHash": "92f823c99a2421c53e176eb34341fc70",
     "entities": [
       {
         "tableName": "Event",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`eventName` TEXT NOT NULL, `date` TEXT NOT NULL, `minTime` INTEGER NOT NULL, `maxTime` INTEGER NOT NULL, `trackingMode` TEXT NOT NULL, `timeSpent` INTEGER NOT NULL, `anyTimeEvent` INTEGER NOT NULL, `eventColor` TEXT NOT NULL, `repeats` TEXT NOT NULL, `eventStatus` INTEGER NOT NULL, `position` INTEGER NOT NULL, `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`eventName` TEXT NOT NULL, `date` TEXT NOT NULL, `minTime` INTEGER NOT NULL, `maxTime` INTEGER NOT NULL, `trackingMode` TEXT NOT NULL, `timeSpent` INTEGER NOT NULL, `eventColor` TEXT NOT NULL, `anyTimeEvent` INTEGER NOT NULL, `eventStatus` TEXT NOT NULL, `repeat` TEXT NOT NULL, `allowedApps` TEXT NOT NULL, `blockedWebs` TEXT NOT NULL, `allowedWebs` TEXT NOT NULL, `customApps` TEXT NOT NULL, `position` INTEGER NOT NULL, `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL)",
         "fields": [
           {
             "fieldPath": "eventName",
@@ -45,27 +45,51 @@
             "notNull": true
           },
           {
-            "fieldPath": "anyTimeEvent",
-            "columnName": "anyTimeEvent",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
             "fieldPath": "eventColor",
             "columnName": "eventColor",
             "affinity": "TEXT",
             "notNull": true
           },
           {
-            "fieldPath": "repeats",
-            "columnName": "repeats",
-            "affinity": "TEXT",
+            "fieldPath": "anyTimeEvent",
+            "columnName": "anyTimeEvent",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
             "fieldPath": "eventStatus",
             "columnName": "eventStatus",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "repeat",
+            "columnName": "repeat",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allowedApps",
+            "columnName": "allowedApps",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blockedWebs",
+            "columnName": "blockedWebs",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allowedWebs",
+            "columnName": "allowedWebs",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customApps",
+            "columnName": "customApps",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -89,126 +113,12 @@
         },
         "indices": [],
         "foreignKeys": []
-      },
-      {
-        "tableName": "AllowedApp",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `eventId` INTEGER NOT NULL, PRIMARY KEY(`packageName`), FOREIGN KEY(`eventId`) REFERENCES `Event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "packageName",
-            "columnName": "packageName",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "eventId",
-            "columnName": "eventId",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "packageName"
-          ]
-        },
-        "indices": [],
-        "foreignKeys": [
-          {
-            "table": "Event",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "eventId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
-      },
-      {
-        "tableName": "BlockedWebsites",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`webName` TEXT NOT NULL, `eventId` INTEGER NOT NULL, PRIMARY KEY(`webName`), FOREIGN KEY(`eventId`) REFERENCES `Event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "webName",
-            "columnName": "webName",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "eventId",
-            "columnName": "eventId",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "webName"
-          ]
-        },
-        "indices": [],
-        "foreignKeys": [
-          {
-            "table": "Event",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "eventId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
-      },
-      {
-        "tableName": "AllowedWebsites",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`webName` TEXT NOT NULL, `eventId` INTEGER NOT NULL, PRIMARY KEY(`webName`), FOREIGN KEY(`eventId`) REFERENCES `Event`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "webName",
-            "columnName": "webName",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "eventId",
-            "columnName": "eventId",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "webName"
-          ]
-        },
-        "indices": [],
-        "foreignKeys": [
-          {
-            "table": "Event",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "eventId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
       }
     ],
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e59e306d1a4ea1f73905d56d6f63faae')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '92f823c99a2421c53e176eb34341fc70')"
     ]
   }
 }

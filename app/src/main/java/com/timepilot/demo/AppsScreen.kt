@@ -93,7 +93,6 @@ fun AppsWebsScreen(
 ) {
     var selectedIndex by remember { mutableIntStateOf(0) }
     val options = listOf("Apps", "Websites", "Custom")
-    onEvent(EventActions.ShowForceFullSheet)
 
     Column(Modifier.background(MaterialTheme.colorScheme.background)) {
         CenterAlignedTopAppBar(
@@ -178,7 +177,8 @@ fun AppsScreen(
             menuUnselectAllOnClick = {
                 onEvent(EventActions.ChangeAllowedApps(listOf()))
                 filteredList.forEach { it.added.value = false }
-            }
+            },
+            menuSortOnClick = null
         )
 
         LazyVerticalGrid(
@@ -189,7 +189,13 @@ fun AppsScreen(
         ) {
             item(span = { GridItemSpan(appsGridCells) }) {
                 AnimatedVisibility(state.allowedApps.isNotEmpty() && searchQuery.value.isEmpty()) {
-                    SelectedAppsRow(allAppsList.filter { it.packageName in state.allowedApps }, rowState, screenWidth) { app ->
+                    SelectedAppsRow(
+                        selectedApps = state.allowedApps.mapNotNull { appPackageName ->
+                            allAppsList.find { app -> app.packageName == appPackageName } // todo idk if this affects the performance but it is needed to have proper order
+                        },
+                        state = rowState,
+                        screenWidth = screenWidth
+                    ) { app ->
                         filteredList[filteredList.indexOf(app)].added.value = false
 
                         val allowedApps = state.allowedApps.toMutableList()
@@ -215,6 +221,7 @@ fun AppsScreen(
             items(filteredList.size) { index ->
                 AppItem(app = filteredList[index], selectedBar = false, onClick = {
                     val allowedApps = state.allowedApps.toMutableList()
+
                     filteredList[index].added.value = if (!filteredList[index].added.value) {
                         allowedApps.add(0, filteredList[index].packageName)
                         true
@@ -224,15 +231,13 @@ fun AppsScreen(
                     }
                     onEvent(EventActions.ChangeAllowedApps(allowedApps))
 
-                    if (filteredList.filter { it.added.value }.size > 4) {
-                        coroutineScope.launch {
-                            if (rowState.firstVisibleItemIndex == 0) {
-                                rowState.scrollToItem(0)
-                                Log.d("AnimateScroll", "normal scroll row")
-                            } else {
-                                rowState.animateScrollToItem(0)
-                                Log.d("AnimateScroll", "animated scroll row")
-                            }
+                    coroutineScope.launch {
+                        if (rowState.firstVisibleItemIndex == 0) {
+                            rowState.requestScrollToItem(0)
+                            Log.d("AnimateScroll", "normal scroll row")
+                        } else {
+                            rowState.animateScrollToItem(0)
+                            Log.d("AnimateScroll", "animated scroll row")
                         }
                     }
                 })
@@ -297,7 +302,8 @@ fun AppsSearchBar(
     modifier: Modifier = Modifier,
     onValueChange: (String) -> Unit,
     menuSelectAllOnClick: (() -> Unit)?,
-    menuUnselectAllOnClick: () -> Unit
+    menuUnselectAllOnClick: () -> Unit,
+    menuSortOnClick: (() -> Unit)?
 ) {
     val focusManager = LocalFocusManager.current
     var expanded by remember { mutableStateOf(false) }
@@ -325,7 +331,7 @@ fun AppsSearchBar(
                             onClick = menuSelectAllOnClick ?: menuUnselectAllOnClick
                         )
                         DropdownMenuItem(
-                            text = { Text("Sort by app usage") },
+                            text = { Text(if (menuSortOnClick != null) "Sort Alphabetically" else "Sort by app usage") },
                             onClick = {
                                 // todo
                             }

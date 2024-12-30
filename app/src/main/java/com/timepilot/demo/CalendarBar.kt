@@ -1,6 +1,5 @@
 package com.timepilot.demo
 
-import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.animateFloatAsState
@@ -59,24 +58,19 @@ import kotlin.math.absoluteValue
 fun CalendarBar(
     selected: LocalDate,
     changeSelected: (LocalDate) -> Unit,
-    onEvent: (EventActions) -> Unit,
     navController: NavController
 ) {
     // 5 years pages and start from the middle
     val pagerState = rememberPagerState(pageCount = { 260 }, initialPage = 130)
-    // for some reason there is a dedicated month var
-    var month by remember { mutableStateOf(selected) }
     // keeps track of the current week cell, from 1-7 index of the cell or day
     var currentCellWeek by remember { mutableIntStateOf(0) }
-    // needed to keep make sure the pager page changed or not
-    var previousPage by remember { mutableIntStateOf(0) }
     // false for now until we make creating account feature
     val accountCreated by remember { mutableStateOf(false) }
 
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 25.dp)) {
             AnimatedContent(
-                targetState = month,
+                targetState = selected.month,
                 transitionSpec = {
                     val isForward = targetState > initialState
                     slideInHorizontally(initialOffsetX = { fullWidth -> if (isForward) fullWidth else -fullWidth }) +
@@ -91,7 +85,7 @@ fun CalendarBar(
             ) { targetValue ->
                 // todo should add a button to choose the month, but the app is so new no one will need this and see "history"
                 Text(
-                    text = targetValue.month.name.lowercase().replaceFirstChar { it.uppercase() },
+                    text = targetValue.name.lowercase().replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.headlineMedium,
                     modifier = Modifier.padding(horizontal = 25.dp)
                 )
@@ -144,13 +138,7 @@ fun CalendarBar(
             else
                 (0..6).map { LocalDate.now().plusDays(it.toLong()) }
 
-            if (pagerState.currentPage != previousPage && pagerState.currentPage == page) {
-                previousPage = page
-                changeSelected(week[currentCellWeek])
-                if (month.month != selected.month) month = selected
-                onEvent(EventActions.ChangeDay(selected.toString()))
-                Log.d("CalendarBar", "CalendarBar changed: $selected")
-            }
+            if (pagerState.currentPage == page) changeSelected(week[currentCellWeek])
 
             Row(modifier = Modifier.padding(horizontal = 9.dp)) {
                 for (i in 0..6)
@@ -158,10 +146,7 @@ fun CalendarBar(
                         modifier = Modifier.weight(1f),
                         date = week[i],
                         selected = selected,
-                        updateSelected = {
-                            currentCellWeek = i
-                            previousPage = -1
-                        }
+                        updateSelected = { currentCellWeek = i }
                     )
             }
         }

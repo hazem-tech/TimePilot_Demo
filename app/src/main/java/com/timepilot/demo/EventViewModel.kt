@@ -67,16 +67,16 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
             }
             is EventActions.SetRepeat -> {
                 _state.update {
-                    it.copy(repeats = event.frequencyDaysList)
+                    it.copy(repeat = event.repeat)
                 }
-                Log.d("EventActions", "SetRepeat: ${event.frequencyDaysList}")
+                Log.d("EventActions", "SetRepeat: ${event.repeat}")
             }
+
             is EventActions.SetColor -> {
                 _state.update {
                     it.copy(eventColor = event.eventColor)
                 }
             }
-
             is EventActions.ChangeAllowedApps -> {
                 _state.update {
                     it.copy(allowedApps = event.allowedApps)
@@ -93,7 +93,9 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
                 }
             }
             is EventActions.SetCustomApps -> {
-                TODO()
+                _state.update {
+                    it.copy(customApps = event.youtube)
+                }
             }
 
             is EventActions.HideSheet -> {
@@ -106,8 +108,12 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
                         trackingMode = state.value.trackingMode,
                         anyTimeEvent = state.value.anyTimeTask,
                         eventColor = state.value.eventColor,
-                        repeats = state.value.repeats,
-                        position = state.value.position
+                        repeat = state.value.repeat,
+                        position = state.value.position,
+                        allowedApps = state.value.allowedApps,
+                        blockedWebs = state.value.blockedWebs,
+                        allowedWebs = state.value.allowedWebs,
+                        customApps = state.value.customApps
                     )
                     // only upsert if the new event is not empty and not the same as a new event, diff id and date is not enough to save
                     if (newEvent.copy(id = 0, date = "", position = 0) != Event(id = 0, date = "", position = 0)) {
@@ -120,7 +126,13 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
                     }
                 }
                 _state.update {
-                    it.copy(isPartialSheet = false, isForcedSheet = false, isFullSheet = false, alreadyCreatedEvent = null)
+                    it.copy(
+                        isPartialSheet = false,
+                        isForcedSheet = false,
+                        isFullSheet = false,
+                        alreadyCreatedEvent = null,
+                        sheetHideMoreOptions = true
+                    )
                 }
             }
             is EventActions.ShowFullSheet -> {
@@ -140,33 +152,42 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
             }
             EventActions.ShowPartialSheet -> {
                 _state.update {
-                    it.copy(isPartialSheet = true, isForcedSheet = false, isFullSheet = false)
+                    it.copy(isPartialSheet = true, isForcedSheet = false, isFullSheet = false, sheetHideMoreOptions = true)
                 }
             }
 
             is EventActions.ChangeDay -> {
                 _dateSelected.value = event.newDay
+                Log.d("EventActions", "DayChanged: ${event.newDay}")
             }
 
             is EventActions.SetUpStates -> {
-                _state.update {
-                    it.copy(
-                        eventName = event.event.eventName,
-                        date = event.event.date,
-                        anyTimeTask = event.event.anyTimeEvent,
-                        minTime = event.event.minTime,
-                        maxTime = event.event.maxTime,
-                        trackingMode = event.event.trackingMode,
-                        eventColor = event.event.eventColor,
-                        repeats = event.event.repeats,
-                        position = event.event.position
-                    )
-                }
+                _state.value = _state.value.copy(
+                    eventName = event.event.eventName,
+                    date = event.event.date,
+                    anyTimeTask = event.event.anyTimeEvent,
+                    minTime = event.event.minTime,
+                    maxTime = event.event.maxTime,
+                    trackingMode = event.event.trackingMode,
+                    eventColor = event.event.eventColor,
+                    repeat = event.event.repeat,
+                    position = event.event.position,
+                    allowedApps = event.event.allowedApps,
+                    blockedWebs = event.event.blockedWebs,
+                    allowedWebs = event.event.allowedWebs,
+                    customApps = event.event.customApps,
+                )
             }
 
             is EventActions.ChangeEventPosition -> {
                 viewModelScope.launch {
                     dao.updateEvent(event.event)
+                }
+            }
+
+            is EventActions.SwitchHideMoreOptions -> {
+                _state.update {
+                    it.copy(sheetHideMoreOptions = event.value)
                 }
             }
         }

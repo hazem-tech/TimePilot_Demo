@@ -66,7 +66,6 @@ fun WebsScreen(
         item {
             HorizontalDivider(Modifier.padding(top = 12.dp, bottom = 6.dp))
             WebsiteAddItem(true) {
-                // allowedKeywords.add(0, "")
                 val allowedKeywords = state.allowedWebs.toMutableList()
                 allowedKeywords.add(0, "")
                 onEvent(EventActions.ChangeAllowedWebs(allowedKeywords))

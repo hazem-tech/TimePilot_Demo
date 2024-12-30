@@ -60,8 +60,8 @@ fun RepeatScreen(
     onEvent: (EventActions) -> Unit,
     navController: NavController
 ) {
-    val numState = rememberPagerState(pageCount = { 48 }, initialPage = state.repeats.split(",")[0].toInt())
-    val typeState = rememberPagerState(pageCount = { 2 }, initialPage = state.repeats.split(",")[1].toInt())
+    val numState = rememberPagerState(pageCount = { 48 }, initialPage = state.repeat[0].toInt())
+    val typeState = rememberPagerState(pageCount = { 2 }, initialPage = if (state.repeat[1] == "DAILY") 0 else 1)
     val numList = (0..48).toList()
 
     Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -127,15 +127,15 @@ fun RepeatScreen(
         }
 
         LaunchedEffect(numState.settledPage) {
-            val repeating = state.repeats.split(",").toMutableList()
+            val repeating = state.repeat.toMutableList()
             repeating[0] = numState.settledPage.toString()
-            onEvent(EventActions.SetRepeat(repeating.joinToString(",")))
+            onEvent(EventActions.SetRepeat(repeating))
         }
 
         LaunchedEffect(typeState.settledPage) {
-            val repeating = state.repeats.split(",").toMutableList()
+            val repeating = state.repeat.toMutableList()
             repeating[1] = numState.settledPage.toString()
-            onEvent(EventActions.SetRepeat(repeating.joinToString(",")))
+            onEvent(EventActions.SetRepeat(repeating))
         }
 
         AnimatedVisibility(visible = typeState.currentPage == 1 && numState.currentPage > 0) {
@@ -147,7 +147,7 @@ fun RepeatScreen(
                         headlineContent = { Text(weekName) },
                         trailingContent = {
                             AnimatedVisibility(
-                                visible = state.repeats.contains(weekName),
+                                visible = state.repeat.contains(weekName),
                                 enter = scaleIn(initialScale = 0f, animationSpec = tween(200, easing = customEasing)),
                                 exit = scaleOut(targetScale = 0f, animationSpec = tween(200, easing = customEasing))
                             ) {
@@ -159,9 +159,9 @@ fun RepeatScreen(
                             }
                         },
                         modifier = Modifier.clickable {
-                            val repeating = state.repeats.split(",").toMutableList()
+                            val repeating = state.repeat.toMutableList()
                             if (repeating.contains(weekName)) repeating.remove(weekName) else repeating.add(weekName)
-                            onEvent(EventActions.SetRepeat(repeating.joinToString(",")))
+                            onEvent(EventActions.SetRepeat(repeating))
                         }
                     )
                 }

@@ -1,5 +1,6 @@
 package com.timepilot.demo
 
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
@@ -29,6 +30,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.MoreTime
@@ -43,7 +45,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -93,13 +94,17 @@ fun NewEvent(
     colors: List<Pair<String,Color>>,
     navController: NavController
 ) {
-    val oldEvent = state.copy()
     val focusManager = LocalFocusManager.current
-    var hideMoreOptions by remember { mutableStateOf(true) }
     var fullScreenItemsShown by remember { mutableFloatStateOf(0f) }
     val openDateDialog = remember { mutableStateOf(false) }
     val openCancelAlertDialog = remember { mutableStateOf(false) }
     val openDeleteAlertDialog = remember { mutableStateOf(false) }
+
+    var initialState = remember { state }
+    LaunchedEffect(state.isFullSheet, state.isPartialSheet, state.isForcedSheet) {
+        initialState = state
+        Log.d("NewEvent", "NewEvent: $initialState")
+    }
 
     Column {
         Row(
@@ -116,8 +121,21 @@ fun NewEvent(
                 TopButton("Cancel") {
                     focusManager.clearFocus()
                     // if nothing changed do not show dialog
-                    if (oldEvent != state) {
+                    if (
+                        initialState.eventName != state.eventName ||
+                        initialState.date != state.date ||
+                        initialState.anyTimeTask != state.anyTimeTask ||
+                        initialState.minTime != state.minTime ||
+                        initialState.maxTime != state.maxTime ||
+                        initialState.trackingMode != state.trackingMode ||
+                        initialState.repeat != state.repeat ||
+                        initialState.allowedApps != state.allowedApps ||
+                        initialState.blockedWebs != state.blockedWebs ||
+                        initialState.allowedWebs != state.allowedWebs ||
+                        initialState.customApps != state.customApps
+                    ) {
                         openCancelAlertDialog.value = true
+                        Log.d("NewEvent", "Cancel dialog shown initialState: \n$initialState, current state: \n$state")
                     } else {
                         onEvent(EventActions.HideSheet(false))
                     }
@@ -161,7 +179,7 @@ fun NewEvent(
             }
             if (openDateDialog.value) {
                 DatePickerModal(
-                    initialSelectedDate = LocalDate.now(),
+                    initialDate = state.date,
                     onDateSelected = { onEvent(EventActions.ChangeDate(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it))))},
                     onDismiss = { openDateDialog.value = false }
                 )
@@ -225,7 +243,19 @@ fun NewEvent(
                             DropdownMenuItem(
                                 text = { Text(color.first) },
                                 leadingIcon = {
-                                    Box(Modifier.size(25.dp).clip(CircleShape).background(color.second))
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.size(34.dp)
+                                            .clip(CircleShape)
+                                            .background(color.second)
+                                    ) {
+                                        if (color.first == state.eventColor) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Check,
+                                                contentDescription = "color chosen",
+                                            )
+                                        }
+                                    }
                                 },
                                 onClick = {
                                     onEvent(EventActions.SetColor(color.first))
@@ -243,7 +273,7 @@ fun NewEvent(
                 allowedApps = state.allowedApps.reversed(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 iconsSize = 47.dp,
-                minApps = 0,
+                showEmpty = false,
                 onClick = { navController.navigate("appsWebsScreen") { launchSingleTop = true } }
             ) {
                 FilledTonalButton(
@@ -279,12 +309,10 @@ fun NewEvent(
 
         // more options section
         AnimatedVisibility(
-            visible = !hideMoreOptions,
+            visible = !state.sheetHideMoreOptions,
             enter = slideInVertically(initialOffsetY = { -it })
         ) {
             Column(Modifier.alpha(fullScreenItemsShown)) {
-                HorizontalDivider()
-
                 ListItem(
                     headlineContent = { Text("Repeat") },
                     leadingContent = {
@@ -295,10 +323,10 @@ fun NewEvent(
                     },
                     trailingContent = {
                         Text(
-                            text = if (state.repeats.split(",")[0].toInt() == 0) {
+                            text = if (state.repeat[0].toInt() == 0) {
                                 "Never"
                             } else {
-                                "every ${state.repeats.split(",")[0].toInt()} ${if (state.repeats.split(",")[1].toInt() == 0) "days" else "weeks"}"
+                                "every ${state.repeat[0].toInt()} ${if (state.repeat[1] == "DAILY") "days" else "weeks"}"
                             }
                         )
                     },
@@ -326,7 +354,7 @@ fun NewEvent(
 //                )
 
                 ListItem(
-                    headlineContent = { Text("Anytime task") },
+                    headlineContent = { Text("Do it anytime") }, // Anytime task, better name?
                     leadingContent = {
                         Icon(
                             Icons.Outlined.MoreTime,
@@ -334,7 +362,12 @@ fun NewEvent(
                         )
                     },
                     trailingContent = {
-                        Switch(checked = state.anyTimeTask, onCheckedChange = { onEvent(EventActions.ChangeAnytime(it)) })
+                        Switch(
+                            checked = state.anyTimeTask,
+                            onCheckedChange = {
+                                // todo show tip everytime enable it if one task from any date contains it is on, it will not show the tip ever again
+                                onEvent(EventActions.ChangeAnytime(it))
+                            })
                     },
                     modifier = Modifier.clickable(onClick = { onEvent(EventActions.ChangeAnytime(!state.anyTimeTask)) }) // todo show popup explain first time
                 )
@@ -369,7 +402,7 @@ fun NewEvent(
                 }
             }
         }
-        AnimatedVisibility(hideMoreOptions && fullScreenItemsShown > 0) {
+        AnimatedVisibility(state.sheetHideMoreOptions && fullScreenItemsShown > 0) {
             ListItem(
                 headlineContent = {
                     Text(
@@ -378,15 +411,12 @@ fun NewEvent(
                     )
                 },
                 modifier = Modifier
-                    .clickable(onClick = { hideMoreOptions = false })
+                    .clickable(onClick = { onEvent(EventActions.SwitchHideMoreOptions(false)) })
                     .alpha(fullScreenItemsShown)
             )
         }
 
         LaunchedEffect(sheetHeight) {
-            if (sheetHeight < 0.6f) {
-                hideMoreOptions = true
-            }
             fullScreenItemsShown = (sheetHeight - 0.6f) * 5
         }
 
@@ -599,13 +629,14 @@ fun CustomBottomSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerModal(
-    initialSelectedDate: LocalDate,
+    initialDate: String,
     onDateSelected: (Long) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialSelectedDate.atStartOfDay()
-        .toInstant(ZoneOffset.UTC)
-        .toEpochMilli())
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = LocalDate.parse(initialDate, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+    )
 
     DatePickerDialog(
         onDismissRequest = onDismiss,

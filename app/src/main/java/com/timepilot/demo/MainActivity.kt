@@ -18,7 +18,16 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
@@ -60,67 +70,92 @@ class MainActivity : ComponentActivity() {
         }
     )
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             TimePilotDemoTheme {
-                val state by viewModel.state.collectAsState()
-                val navController = rememberNavController()
-                var allApps by remember { mutableStateOf(listOf<App>()) }
-                val scope = rememberCoroutineScope()
-                LaunchedEffect(Unit) {
-                    scope.launch {
-                        allApps = getInstalledApps(this@MainActivity).sortedBy { it.name }
-                        Log.d("AllAppsUpdating", allApps.toString())
+                Scaffold { padding ->
+                    val state by viewModel.state.collectAsState()
+                    val navController = rememberNavController()
+                    var allApps by remember { mutableStateOf(listOf<App>()) }
+                    val scope = rememberCoroutineScope()
+                    LaunchedEffect(Unit) {
+                        scope.launch {
+                            allApps = getInstalledApps(this@MainActivity).sortedBy { it.name }
+                            Log.d("AllAppsUpdating", allApps.toString())
+                        }
                     }
-                }
 
-                val colorsOptions = listOf(
-                    Pair("Main",
-                        if (!isSystemInDarkTheme()) colorResource(com.google.android.material.R.color.material_dynamic_primary80)
-                        else colorResource(com.google.android.material.R.color.material_dynamic_primary10)),
-                    Pair("Red", if (!isSystemInDarkTheme()) Color(0xFFF5BABA) else Color(0xFF341314)),
-                    Pair("Green", if (!isSystemInDarkTheme()) Color(0xFFBAF5CC) else Color(0xFF143413) ),
-                    Pair("Blue", if (!isSystemInDarkTheme()) Color(0xFFB4CDFF) else Color(0xFF122038)),
-                    Pair("Yellow", if (!isSystemInDarkTheme()) Color(0xFFFDD9AB) else Color(0xFF443902)),
-                    Pair("Pink", if (!isSystemInDarkTheme()) Color(0xFFFFB1DB) else Color(0xFF341235)),
-                    Pair("Purple", if (!isSystemInDarkTheme()) Color(0xFFDEB7FF) else Color(0xFF23103D))
-                )
+                    val colorsOptions = listOf(
+                        Pair("Main",
+                            if (!isSystemInDarkTheme()) colorResource(com.google.android.material.R.color.material_dynamic_primary80)
+                            else colorResource(com.google.android.material.R.color.material_dynamic_primary10)),
+                        Pair("Red", if (!isSystemInDarkTheme()) Color(0xFFF5BABA) else Color(0xFF341314)),
+                        Pair("Green", if (!isSystemInDarkTheme()) Color(0xFFBAF5CC) else Color(0xFF143413) ),
+                        Pair("Blue", if (!isSystemInDarkTheme()) Color(0xFFB4CDFF) else Color(0xFF122038)),
+                        Pair("Yellow", if (!isSystemInDarkTheme()) Color(0xFFFDD9AB) else Color(0xFF443902)),
+                        Pair("Pink", if (!isSystemInDarkTheme()) Color(0xFFFFB1DB) else Color(0xFF341235)),
+                        Pair("Purple", if (!isSystemInDarkTheme()) Color(0xFFDEB7FF) else Color(0xFF23103D))
+                    )
 
-                NavHost(
-                    navController = navController,
-                    startDestination = "home",
-                    enterTransition = { slideIntoContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Start,
-                        tween(300, easing = customEasing), initialOffset = {300}) + fadeIn(tween(200)) },
-                    exitTransition = { slideOutOfContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Start,
-                        tween(300, easing = customEasing), targetOffset = {-300}) + fadeOut(tween(200)) },
-                    popEnterTransition = { slideIntoContainer(
-                        AnimatedContentTransitionScope.SlideDirection.End,
-                        tween(300, easing = customEasing), initialOffset = {-300}) + fadeIn(tween(200)) },
-                    popExitTransition = { slideOutOfContainer(
-                        AnimatedContentTransitionScope.SlideDirection.End,
-                        tween(300, easing = customEasing), targetOffset = {300}) + fadeOut(tween(200)) }
-                ) {
-                    navigation(
-                        startDestination = "settingsScreen",
-                        route = "settings"
+                    // todo show onboarding screen if the user never created an event like if it is empty, idk if the user saw it before the only way to now show it is to have at least one event in the past at any date
+
+                    NavHost(
+                        navController = navController,
+                        startDestination = "home",
+                        enterTransition = { slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Start,
+                            tween(300, easing = customEasing), initialOffset = {300}) + fadeIn(tween(200)) },
+                        exitTransition = { slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Start,
+                            tween(300, easing = customEasing), targetOffset = {-300}) + fadeOut(tween(200)) },
+                        popEnterTransition = { slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.End,
+                            tween(300, easing = customEasing), initialOffset = {-300}) + fadeIn(tween(200)) },
+                        popExitTransition = { slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.End,
+                            tween(300, easing = customEasing), targetOffset = {300}) + fadeOut(tween(200)) }
                     ) {
-                        composable("settingsScreen") {
-                            SettingsScreen(navController)
+                        navigation(
+                            startDestination = "settingsScreen",
+                            route = "settings"
+                        ) {
+                            composable("settingsScreen") {
+                                SettingsScreen(navController)
+                            }
+                            composable("strictModeScreen") {
+                                // TODO()
+                            }
+                            composable("alwaysAllowedApps") {
+                                Scaffold(
+                                    topBar = {
+                                        TopAppBar(
+                                            title = {
+                                                Text("Always allowed apps")
+                                            },
+                                            navigationIcon = {
+                                                IconButton(onClick = { navController.popBackStack() }) {
+                                                    Icon(
+                                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                                        contentDescription = "Localized description"
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    },
+                                ) { innerPadding ->
+                                    Box(Modifier.padding(innerPadding)) {
+                                        AppsScreen(state, viewModel::onEvent, allApps)
+                                    }
+                                }
+                            }
                         }
-                        composable("strictModeScreen") {
-                            // TODO()
-                        }
-                        composable("alwaysAllowedApps") {
-                            AppsScreen(state, viewModel::onEvent, allApps)
-                        }
-                    }
 
-                    composable("home") {
-                        EventsList(state, viewModel::onEvent, allApps, colors = colorsOptions, navController)
+                        composable("home") {
+                            EventsList(state, viewModel::onEvent, allApps, colors = colorsOptions, padding, navController)
+                        }
                     }
                 }
             }
