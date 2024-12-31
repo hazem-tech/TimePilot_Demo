@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AvTimer
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Leaderboard
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -37,6 +40,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -135,6 +139,25 @@ fun EventDuration(
                 }
             })
         )
+
+        Spacer(modifier = Modifier.weight(1f))
+        ListItem(
+            headlineContent = {
+                Column {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = null,
+                        Modifier.padding(bottom = 15.dp)
+                    )
+                    Text(
+                        "${state.eventName} can only be marked complete after minimum duration. And it will automatically complete after maximum duration",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 50.dp)
+                    )
+                }
+            },
+            colors = ListItemDefaults.colors(headlineColor = MaterialTheme.colorScheme.onSurfaceVariant),
+        )
     }
 }
 
@@ -190,7 +213,7 @@ fun EventTracking(state: EventsStates, onEvent: (EventActions) -> Unit, navContr
 @Composable
 fun DurationPreview() {
     TimePilotDemoTheme {
-        //EventDuration("Hello", rememberNavController())
+        EventDuration(EventsStates(), {}, rememberNavController())
     }
 }
 
@@ -198,6 +221,6 @@ fun DurationPreview() {
 @Composable
 fun TrackingPreview() {
     TimePilotDemoTheme {
-        // EventTracking(rememberNavController())
+        EventTracking(EventsStates(), {}, rememberNavController())
     }
 }

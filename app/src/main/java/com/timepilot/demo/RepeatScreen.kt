@@ -170,6 +170,7 @@ fun RepeatScreen(
     }
 }
 
+// todo i am not sure if the horizontal and vertical pickers work on large screens like tablet
 @Composable
 fun NumPicker(modifier: Modifier = Modifier, state: PagerState, text: (Int) -> String, horizontal: Boolean, padding: PaddingValues, textHeight: Dp) {
     val mutableInteractionSource = remember { MutableInteractionSource() }

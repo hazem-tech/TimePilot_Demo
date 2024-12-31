@@ -35,7 +35,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -47,7 +46,7 @@ import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(navController: NavController) {
-    var alwaysEnable by remember { mutableStateOf(false) }
+    val focusModeEnabled by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val disableUserEditing by remember { mutableStateOf(false) }
 
@@ -99,8 +98,7 @@ fun SettingsScreen(navController: NavController) {
                         contentDescription = null,
                     )
                 },
-                trailingContent = { Switch(checked = alwaysEnable, onCheckedChange = {
-                    alwaysEnable = !alwaysEnable
+                trailingContent = { Switch(checked = focusModeEnabled, onCheckedChange = {
                     navController.navigate("strictModeScreen") {
                         launchSingleTop = true
                     }

@@ -70,7 +70,6 @@ import java.time.format.DateTimeFormatter
 fun EventsList(
     state: EventsStates,
     onEvent: (EventActions) -> Unit,
-    allApps: List<App>,
     colors: List<Pair<String, Color>>,
     innerPadding: PaddingValues,
     navController: NavController
@@ -289,19 +288,23 @@ fun EventsList(
             },
             popExitTransition = {
                 slideOutOfContainer(
-                    AnimatedContentTransitionScope.SlideDirection.End, tween(
-                        350,
-                        easing = customEasing
-                    ),
+                    AnimatedContentTransitionScope.SlideDirection.End, tween(350, easing = customEasing),
                     targetOffset = { 300 }) + fadeOut(tween(150))
             }
         ) {
             composable("eventSheet") {
-                NewEvent(state = state, onEvent = onEvent, sheetHeight = sheetHeight, colors = colors, navController = sheetNavController)
+                NewEvent(
+                    state = state,
+                    initialState = remember { state.copy() },
+                    onEvent = onEvent,
+                    sheetHeight = sheetHeight,
+                    colors = colors,
+                    navController = sheetNavController
+                )
             }
 
             composable("appsWebsScreen") {
-                AppsWebsScreen(state, onEvent, allApps, sheetNavController)
+                AppsWebsScreen(state, onEvent, sheetNavController)
             }
 
             navigation(
@@ -330,7 +333,6 @@ fun GreetingPreview() {
         EventsList(
             state = EventsStates(),
             onEvent = {},
-            allApps = listOf(),
             colors = listOf(),
             innerPadding = PaddingValues(),
             navController = rememberNavController()

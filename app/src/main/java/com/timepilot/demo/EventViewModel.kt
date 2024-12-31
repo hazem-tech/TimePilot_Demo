@@ -23,83 +23,83 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
         state.copy(allEvent = events)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), EventsStates())
 
-    fun onEvent(event: EventActions) {
-        when (event) {
+    fun onEvent(input: EventActions) {
+        when (input) {
             is EventActions.SetEventName -> {
                 _state.update {
-                    it.copy(eventName = event.eventName)
+                    it.copy(eventName = input.eventName)
                 }
             }
             is EventActions.DeleteEvent -> {
                 viewModelScope.launch {
-                    dao.deleteEvent(event.event)
+                    dao.deleteEvent(input.event)
                 }
             }
             is EventActions.ChangeDate -> {
                 _state.update {
-                    it.copy(date = event.date)
+                    it.copy(date = input.date)
                 }
             }
 
             is EventActions.SetMinTime -> {
                 _state.update {
-                    it.copy(minTime = event.minTime)
+                    it.copy(minTime = input.minTime)
                 }
-                Log.d("EventActions", "SetMinTime: ${event.minTime}")
+                Log.d("EventActions", "SetMinTime: ${input.minTime}")
             }
             is EventActions.SetMaxTime -> {
                 _state.update {
-                    it.copy(maxTime = event.maxTime)
+                    it.copy(maxTime = input.maxTime)
                 }
-                Log.d("EventActions", "SetMaxTime: ${event.maxTime}")
+                Log.d("EventActions", "SetMaxTime: ${input.maxTime}")
             }
             is EventActions.SetTrackingMode -> {
                 _state.update {
-                    it.copy(trackingMode = event.trackingMode)
+                    it.copy(trackingMode = input.trackingMode)
                 }
-                Log.d("EventActions", "SetTrackingMode: ${event.trackingMode}")
+                Log.d("EventActions", "SetTrackingMode: ${input.trackingMode}")
             }
             is EventActions.ChangeAnytime -> {
                 _state.update {
-                    it.copy(anyTimeTask = event.anyTimeTask)
+                    it.copy(anyTimeTask = input.anyTimeTask)
                 }
-                Log.d("EventActions", "ChangeAnytime: ${event.anyTimeTask}")
+                Log.d("EventActions", "ChangeAnytime: ${input.anyTimeTask}")
             }
             is EventActions.SetRepeat -> {
                 _state.update {
-                    it.copy(repeat = event.repeat)
+                    it.copy(repeat = input.repeat)
                 }
-                Log.d("EventActions", "SetRepeat: ${event.repeat}")
+                Log.d("EventActions", "SetRepeat: ${input.repeat}")
             }
 
             is EventActions.SetColor -> {
                 _state.update {
-                    it.copy(eventColor = event.eventColor)
+                    it.copy(eventColor = input.eventColor)
                 }
             }
             is EventActions.ChangeAllowedApps -> {
                 _state.update {
-                    it.copy(allowedApps = event.allowedApps)
+                    it.copy(allowedApps = input.allowedApps)
                 }
             }
             is EventActions.ChangeBlockedWebs -> {
                 _state.update {
-                    it.copy(blockedWebs = event.blockedWebsites)
+                    it.copy(blockedWebs = input.blockedWebsites)
                 }
             }
             is EventActions.ChangeAllowedWebs -> {
                 _state.update {
-                    it.copy(allowedWebs = event.allowedWebsites)
+                    it.copy(allowedWebs = input.allowedWebsites)
                 }
             }
-            is EventActions.SetCustomApps -> {
+            is EventActions.ChangeCustomApps -> {
                 _state.update {
-                    it.copy(customApps = event.youtube)
+                    it.copy(customAppsYt = input.youtube)
                 }
             }
 
             is EventActions.HideSheet -> {
-                if (event.saveEvent) {
+                if (input.saveEvent) {
                     val newEvent = Event(
                         eventName = state.value.eventName,
                         date = state.value.date,
@@ -113,7 +113,7 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
                         allowedApps = state.value.allowedApps,
                         blockedWebs = state.value.blockedWebs,
                         allowedWebs = state.value.allowedWebs,
-                        customApps = state.value.customApps
+                        customAppsYt = state.value.customAppsYt
                     )
                     // only upsert if the new event is not empty and not the same as a new event, diff id and date is not enough to save
                     if (newEvent.copy(id = 0, date = "", position = 0) != Event(id = 0, date = "", position = 0)) {
@@ -139,9 +139,9 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
                 _state.update {
                     it.copy(isPartialSheet = false, isForcedSheet = false, isFullSheet = true)
                 }
-                if (event.eventID != null) {
+                if (input.eventID != null) {
                     _state.update {
-                        it.copy(alreadyCreatedEvent = event.eventID)
+                        it.copy(alreadyCreatedEvent = input.eventID)
                     }
                 }
             }
@@ -157,37 +157,43 @@ class EventsViewModel(private val dao: EventDao): ViewModel() {
             }
 
             is EventActions.ChangeDay -> {
-                _dateSelected.value = event.newDay
-                Log.d("EventActions", "DayChanged: ${event.newDay}")
+                _dateSelected.value = input.newDay
+                Log.d("EventActions", "DayChanged: ${input.newDay}")
             }
 
             is EventActions.SetUpStates -> {
                 _state.value = _state.value.copy(
-                    eventName = event.event.eventName,
-                    date = event.event.date,
-                    anyTimeTask = event.event.anyTimeEvent,
-                    minTime = event.event.minTime,
-                    maxTime = event.event.maxTime,
-                    trackingMode = event.event.trackingMode,
-                    eventColor = event.event.eventColor,
-                    repeat = event.event.repeat,
-                    position = event.event.position,
-                    allowedApps = event.event.allowedApps,
-                    blockedWebs = event.event.blockedWebs,
-                    allowedWebs = event.event.allowedWebs,
-                    customApps = event.event.customApps,
+                    eventName = input.event.eventName,
+                    date = input.event.date,
+                    anyTimeTask = input.event.anyTimeEvent,
+                    minTime = input.event.minTime,
+                    maxTime = input.event.maxTime,
+                    trackingMode = input.event.trackingMode,
+                    eventColor = input.event.eventColor,
+                    repeat = input.event.repeat,
+                    position = input.event.position,
+                    allowedApps = input.event.allowedApps,
+                    blockedWebs = input.event.blockedWebs,
+                    allowedWebs = input.event.allowedWebs,
+                    customAppsYt = input.event.customAppsYt,
                 )
             }
 
             is EventActions.ChangeEventPosition -> {
                 viewModelScope.launch {
-                    dao.updateEvent(event.event)
+                    dao.updateEvent(input.event)
                 }
             }
 
             is EventActions.SwitchHideMoreOptions -> {
                 _state.update {
-                    it.copy(sheetHideMoreOptions = event.value)
+                    it.copy(sheetHideMoreOptions = input.value)
+                }
+            }
+
+            is EventActions.UpdateInstalledApps -> {
+                _state.update {
+                    it.copy(allInstalledApps = input.allUserApps)
                 }
             }
         }

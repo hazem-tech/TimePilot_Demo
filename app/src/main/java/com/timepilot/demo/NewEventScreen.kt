@@ -1,28 +1,26 @@
 package com.timepilot.demo
 
+import android.content.Context
+import android.content.Context.LAUNCHER_APPS_SERVICE
+import android.content.pm.LauncherApps
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.os.Process
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.expandIn
 import androidx.compose.animation.shrinkOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -35,8 +33,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.MoreTime
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -49,7 +45,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,9 +64,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -78,6 +75,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.timepilot.demo.ui.theme.TimePilotDemoTheme
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -89,6 +87,7 @@ import kotlin.math.absoluteValue
 @Composable
 fun NewEvent(
     state: EventsStates,
+    initialState: EventsStates, // used to check if changes happen so it will show alert when cancelling
     onEvent: (EventActions) -> Unit,
     sheetHeight: Float,
     colors: List<Pair<String,Color>>,
@@ -99,11 +98,13 @@ fun NewEvent(
     val openDateDialog = remember { mutableStateOf(false) }
     val openCancelAlertDialog = remember { mutableStateOf(false) }
     val openDeleteAlertDialog = remember { mutableStateOf(false) }
-
-    var initialState = remember { state }
-    LaunchedEffect(state.isFullSheet, state.isPartialSheet, state.isForcedSheet) {
-        initialState = state
-        Log.d("NewEvent", "NewEvent: $initialState")
+    // todo update installed apps everytime if user deleted or installed new apps, here not main activity for no reason anyway it is coroutine
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) {
+        scope.launch {
+            onEvent(EventActions.UpdateInstalledApps(getInstalledApps(context).sortedBy { it.name }))
+        }
     }
 
     Column {
@@ -132,7 +133,7 @@ fun NewEvent(
                         initialState.allowedApps != state.allowedApps ||
                         initialState.blockedWebs != state.blockedWebs ||
                         initialState.allowedWebs != state.allowedWebs ||
-                        initialState.customApps != state.customApps
+                        initialState.customAppsYt != state.customAppsYt
                     ) {
                         openCancelAlertDialog.value = true
                         Log.d("NewEvent", "Cancel dialog shown initialState: \n$initialState, current state: \n$state")
@@ -147,8 +148,8 @@ fun NewEvent(
                             openCancelAlertDialog.value = false
                             onEvent(EventActions.HideSheet(true))
                         },
-                        dialogTitle = "Are you sure you want to cancel changes?",
-                        mainButton = "Cancel"
+                        dialogTitle = "Are you sure you want to discard your changes?",
+                        mainButton = "Discard changes"
                     )
                 }
             }
@@ -188,14 +189,25 @@ fun NewEvent(
 
         Box(Modifier.padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 12.dp)) {
             for (i in 0..1) {
-                CustomTextField(
-                    state = state,
-                    onEvent = onEvent,
-                    hint = "Name",
-                    textStyle = if (i == 0)
-                        MaterialTheme.typography.bodyLarge.copy(MaterialTheme.colorScheme.onSurface)
-                    else
-                        MaterialTheme.typography.headlineMedium.copy(MaterialTheme.colorScheme.onSurface),
+                val textStyle = if (i == 0)
+                    MaterialTheme.typography.bodyLarge.copy(MaterialTheme.colorScheme.onSurface)
+                else
+                    MaterialTheme.typography.headlineMedium.copy(MaterialTheme.colorScheme.onSurface)
+
+                BasicTextField(
+                    value = state.eventName.takeIf { it != "Untitled event" }.orEmpty(),
+                    onValueChange = { onEvent(EventActions.SetEventName(it)) },
+                    textStyle = textStyle,
+                    decorationBox = { innerTextField -> // hint
+                        if (state.eventName.takeIf { it != "Untitled event" }.orEmpty().isEmpty()) Text("Name", color = MaterialTheme.colorScheme.onSurfaceVariant, style = textStyle)
+                        innerTextField()
+                    },
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
+                    singleLine = true,
+                    keyboardActions = KeyboardActions(onDone = {
+                        focusManager.clearFocus()
+                        onEvent(EventActions.ShowFullSheet(eventID = state.alreadyCreatedEvent)) // not forced anymore
+                    }),
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .fillMaxWidth()
@@ -211,11 +223,7 @@ fun NewEvent(
                             } else {
                                 fullScreenItemsShown
                             }
-                        ),
-                    onDone = {
-                        focusManager.clearFocus()
-                        onEvent(EventActions.ShowFullSheet(state.alreadyCreatedEvent)) // not forced anymore
-                    }
+                        )
                 )
             }
 
@@ -227,11 +235,12 @@ fun NewEvent(
                         .alpha(fullScreenItemsShown)
                 ) {
                     var expanded by remember { mutableStateOf(false) }
+                    // AnimatedContent(state.eventColor, label = "ColorAnimation") { color ->
                     Button(
                         onClick = { expanded = !expanded },
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(containerColor = colors.find { it.first == state.eventColor }!!.second),
-                        border = BorderStroke(width = 1.dp, color = Color.Gray),
+                        border = BorderStroke(width = 1.dp, color = Color.Gray.copy(0.5f)),
                         content = {}
                     )
                     DropdownMenu(
@@ -258,8 +267,8 @@ fun NewEvent(
                                     }
                                 },
                                 onClick = {
-                                    onEvent(EventActions.SetColor(color.first))
                                     expanded = false
+                                    onEvent(EventActions.SetColor(color.first))
                                 }
                             )
                         }
@@ -274,10 +283,16 @@ fun NewEvent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 iconsSize = 47.dp,
                 showEmpty = false,
-                onClick = { navController.navigate("appsWebsScreen") { launchSingleTop = true } }
+                onClick = {
+                    onEvent(EventActions.ShowForceFullSheet)
+                    navController.navigate("appsWebsScreen") { launchSingleTop = true }
+                }
             ) {
                 FilledTonalButton(
-                    onClick = { navController.navigate("appsWebsScreen") { launchSingleTop = true } },
+                    onClick = {
+                        onEvent(EventActions.ShowForceFullSheet)
+                        navController.navigate("appsWebsScreen") { launchSingleTop = true }
+                    },
                     contentPadding = if (state.allowedApps.isEmpty()) PaddingValues(horizontal = 26.dp, vertical = 11.dp) else PaddingValues(0.dp),
                     modifier = if (state.allowedApps.isEmpty()) Modifier else Modifier.size(47.dp)
                 ) {
@@ -300,10 +315,10 @@ fun NewEvent(
             },
             trailingContent = { Text("${durationFormatting(state.minTime)} - ${durationFormatting(state.maxTime)}") },
             modifier = Modifier.clickable(onClick = {
+                onEvent(EventActions.ShowForceFullSheet)
                 navController.navigate("eventDuration") {
                     launchSingleTop = true
                 }
-                onEvent(EventActions.ShowForceFullSheet)
             })
         )
 
@@ -331,27 +346,12 @@ fun NewEvent(
                         )
                     },
                     modifier = Modifier.clickable(onClick = {
+                        onEvent(EventActions.ShowForceFullSheet)
                         navController.navigate("eventRepeat") {
                             launchSingleTop = true
                         }
-                        onEvent(EventActions.ShowForceFullSheet)
                     })
                 )
-
-                // TODO() I am not sure yet how to implement the start auto
-//                ListItem(
-//                    headlineContent = { Text("Start automatically") },
-//                    leadingContent = {
-//                        Icon(
-//                            Icons.Outlined.PlayCircle,
-//                            contentDescription = null,
-//                        )
-//                    },
-//                    trailingContent = { Text("Never") },
-//                    modifier = Modifier.clickable(onClick = {
-//                        setSheet(forcedFullyExpanded)
-//                    })
-//                )
 
                 ListItem(
                     headlineContent = { Text("Do it anytime") }, // Anytime task, better name?
@@ -431,201 +431,6 @@ fun NewEvent(
     }
 }
 
-@Composable
-fun TopButton(text: String, fontWeight: FontWeight? = null, onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val buttonColor = if (isPressed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-    Box(
-        modifier = Modifier
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
-    ) {
-        Text(
-            text = text,
-            color = buttonColor,
-            fontWeight = fontWeight,
-            modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 24.dp)
-        )
-    }
-}
-
-@Composable
-fun CustomTextField(
-    state: EventsStates,
-    onEvent: (EventActions) -> Unit,
-    onDone: () -> Unit,
-    hint: String,
-    modifier: Modifier = Modifier,
-    textStyle: TextStyle
-) {
-    BasicTextField(
-        value = state.eventName,
-        onValueChange = { onEvent(EventActions.SetEventName(it)) },
-        textStyle = textStyle,
-        decorationBox = { innerTextField -> // The text hint
-            if (state.eventName.isEmpty()) {
-                Text(
-                    text = hint,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = textStyle
-                )
-            }
-            innerTextField()
-        },
-        cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
-        singleLine = true,
-        keyboardActions = KeyboardActions(onDone = { onDone() }),
-        modifier = modifier
-    )
-}
-
-@Composable
-fun SimpleAlertDialog(
-    onDismissRequest: () -> Unit,
-    onConfirmation: () -> Unit,
-    dialogTitle: String,
-    mainButton: String
-) {
-    AlertDialog(
-        title = {
-            Text(text = dialogTitle)
-        },
-        onDismissRequest = {
-            onDismissRequest()
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirmation()
-                }
-            ) {
-                Text(mainButton)
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    onDismissRequest()
-                }
-            ) {
-                Text("Back")
-            }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CustomBottomSheet(
-    state: EventsStates,
-    onEvent: (EventActions) -> Unit,
-    content: @Composable (Float) -> Unit
-) {
-    val hiddenHeight = 0.dp
-    val partialHeight = 300.dp
-    val fullHeight = LocalConfiguration.current.screenHeightDp.dp - 20.dp
-
-    var sheetHeight by remember { mutableStateOf(hiddenHeight) }
-    var currentHeight by remember { mutableStateOf(partialHeight) }
-    val animatedHeight by animateDpAsState(targetValue = sheetHeight, label = "SheetHeightAnimation")
-
-    LaunchedEffect(state) {
-        sheetHeight = if (state.isPartialSheet) {
-            partialHeight
-        } else if (state.isFullSheet) {
-            fullHeight
-        } else if (state.isForcedSheet) {
-            fullHeight
-        } else {
-            hiddenHeight
-        }
-    }
-
-    Box {
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = (sheetHeight.value / fullHeight.value) / 1.6f))
-            .then(
-                if (state.isPartialSheet) {
-                    Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            onEvent(EventActions.HideSheet(true))
-                            sheetHeight = hiddenHeight
-                        }
-                    )
-                } else {
-                    Modifier
-                }
-            )
-        )
-        Surface(
-            modifier = Modifier
-                .height(animatedHeight)
-                .align(Alignment.BottomCenter),
-            shape = BottomSheetDefaults.ExpandedShape,
-        ) {
-            Column {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .draggable(
-                            orientation = Orientation.Vertical,
-                            state = rememberDraggableState { delta ->
-                                currentHeight =
-                                    if (!state.isForcedSheet)
-                                        (currentHeight - delta.dp).coerceIn(
-                                            hiddenHeight,
-                                            fullHeight + 10.dp
-                                        )
-                                    else
-                                        (currentHeight - delta.dp / 12).coerceIn(
-                                            hiddenHeight,
-                                            fullHeight + 10.dp
-                                        )
-                                sheetHeight = currentHeight
-                            },
-                            onDragStopped = {
-                                sheetHeight = when {
-                                    currentHeight > fullHeight * 0.7f -> {
-                                        if (!state.isForcedSheet) onEvent(EventActions.ShowFullSheet(state.alreadyCreatedEvent))
-                                        fullHeight
-                                    }
-
-                                    currentHeight < fullHeight * 0.3f -> {
-                                        if (!state.isForcedSheet) {
-                                            onEvent(EventActions.HideSheet(true))
-                                            hiddenHeight
-                                        } else {
-                                            fullHeight
-                                        }
-                                    }
-
-                                    else -> {
-                                        if (!state.isForcedSheet) {
-                                            onEvent(EventActions.ShowPartialSheet)
-                                            partialHeight
-                                        } else {
-                                            fullHeight
-                                        }
-                                    }
-                                }
-                                currentHeight = sheetHeight
-                            }
-                        ),
-                    content = { BottomSheetDefaults.DragHandle(Modifier.align(Alignment.Center)) }
-                )
-                content(sheetHeight.value / fullHeight.value) // to get 0 to 1 value
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerModal(
@@ -661,12 +466,41 @@ fun DatePickerModal(
     }
 }
 
+private fun getInstalledApps(context: Context) : List<App> {
+    val launcherApps = context.getSystemService(LAUNCHER_APPS_SERVICE) as LauncherApps
+    val userHandle = Process.myUserHandle()
+    val activityList = launcherApps.getActivityList(null, userHandle)
+    val allApps = mutableListOf<App>()
+
+    for (activity in activityList) {
+        val appName = activity.label.toString()
+        val appIcon = activity.getIcon(0)
+        val packageName = activity.applicationInfo.packageName
+        // convert drawable to bitmap
+        val bitmap = Bitmap.createBitmap(
+            appIcon.intrinsicWidth,
+            appIcon.intrinsicHeight,
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(bitmap)
+        appIcon.setBounds(0, 0, canvas.width, canvas.height)
+        appIcon.draw(canvas)
+
+        allApps.add(App(name = appName, packageName = packageName, icon = BitmapPainter(bitmap.asImageBitmap())))
+    }
+    allApps.sortBy { it.name }
+    return allApps
+    //val serviceIntent = Intent(this, UsageEventsService::class.java)
+    //startForegroundService(serviceIntent)
+}
+
 @Preview(showBackground = true)
 @Composable
 fun SheetPreview() {
     TimePilotDemoTheme {
         NewEvent(
             state = EventsStates(),
+            initialState = EventsStates(),
             onEvent = { },
             sheetHeight = 800f,
             colors = listOf(),

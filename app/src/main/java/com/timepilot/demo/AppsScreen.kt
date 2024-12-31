@@ -15,7 +15,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,18 +34,11 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -56,10 +48,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -68,11 +57,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -88,7 +75,6 @@ import kotlinx.coroutines.launch
 fun AppsWebsScreen(
     state: EventsStates,
     onEvent: (EventActions) -> Unit,
-    allAppsList: List<App>,
     navController: NavController
 ) {
     var selectedIndex by remember { mutableIntStateOf(0) }
@@ -124,15 +110,14 @@ fun AppsWebsScreen(
         )
         AnimatedContent(
             targetState = selectedIndex,
-            transitionSpec = { slideInHorizontally(initialOffsetX = {
-                if (selectedIndex == 0) -it else it
-            }) togetherWith slideOutHorizontally(targetOffsetX = {
-                if (selectedIndex == 0) it else -it
-            })
-            }, label = "AppsWebsCustomTransition"
+            transitionSpec = {
+                val isForward = targetState < initialState
+                slideInHorizontally(initialOffsetX = { if (isForward) -it else it }) togetherWith
+                        slideOutHorizontally(targetOffsetX = { if (isForward) it else -it }) },
+            label = "AppsWebsCustomTransition"
         ) { targetState ->
             when (targetState) {
-                0 -> AppsScreen(state, onEvent, allAppsList)
+                0 -> AppsScreen(state, onEvent)
                 1 -> WebsScreen(state, onEvent)
                 2 -> CustomAppScreen(state, onEvent)
             }
@@ -144,11 +129,10 @@ fun AppsWebsScreen(
 fun AppsScreen(
     state: EventsStates,
     onEvent: (EventActions) -> Unit,
-    allAppsList: List<App>
 ) {
     val searchQuery = remember { mutableStateOf("") }
     val filteredList = remember(searchQuery.value) {
-        allAppsList.filter { it.name.contains(searchQuery.value, ignoreCase = true) }
+        state.allInstalledApps.filter { it.name.contains(searchQuery.value, ignoreCase = true) }
     }
     val gridState = rememberLazyGridState()
     val rowState = rememberLazyListState()
@@ -157,29 +141,30 @@ fun AppsScreen(
     val screenWidth = (LocalConfiguration.current.screenWidthDp.dp - 20.dp)  / appsGridCells
 
     Column {
-        AppsSearchBar(
-            textState = searchQuery,
-            onValueChange = {
-                searchQuery.value = it
-                coroutineScope.launch {
-                    gridState.animateScrollToItem(0)
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 18.dp, end = 18.dp, top = 12.dp),
-            menuSelectAllOnClick =
-            // if there is an item that is not added, which means not null, show select all, else return null
-            if (filteredList.find { !it.added.value } != null) {{
-                onEvent(EventActions.ChangeAllowedApps(filteredList.map { it.packageName }))
-                filteredList.forEach { it.added.value = true }
-            }} else null,
-            menuUnselectAllOnClick = {
-                onEvent(EventActions.ChangeAllowedApps(listOf()))
-                filteredList.forEach { it.added.value = false }
-            },
-            menuSortOnClick = null
-        )
+        if (state.eventStatus != EventStatus.NEVER_STARTED) {
+            AppsSearchBar(
+                textState = searchQuery,
+                onValueChange = {
+                    searchQuery.value = it
+                    coroutineScope.launch {
+                        gridState.animateScrollToItem(0)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 18.dp, end = 18.dp, top = 12.dp),
+                menuSelectAllOnClick =
+                if (filteredList.size != state.allowedApps.size) {
+                    {
+                        onEvent(EventActions.ChangeAllowedApps(filteredList.map { it.packageName }))
+                    }
+                } else null,
+                menuUnselectAllOnClick = {
+                    onEvent(EventActions.ChangeAllowedApps(listOf()))
+                },
+                menuSortOnClick = null
+            )
+        }
 
         LazyVerticalGrid(
             state = gridState,
@@ -187,20 +172,24 @@ fun AppsScreen(
             horizontalArrangement = Arrangement.spacedBy((-20).dp),
             contentPadding = PaddingValues(top = 18.dp, bottom = 60.dp)
         ) {
+            item {
+                AnimatedVisibility((state.allowedApps.isNotEmpty() && searchQuery.value.isEmpty()) || state.eventStatus != EventStatus.NEVER_STARTED) {
+                    SmallText("Allowed apps")
+                }
+            }
             item(span = { GridItemSpan(appsGridCells) }) {
                 AnimatedVisibility(state.allowedApps.isNotEmpty() && searchQuery.value.isEmpty()) {
                     SelectedAppsRow(
+                        eventState = state,
                         selectedApps = state.allowedApps.mapNotNull { appPackageName ->
-                            allAppsList.find { app -> app.packageName == appPackageName } // todo idk if this affects the performance but it is needed to have proper order
+                            state.allInstalledApps.find { app -> app.packageName == appPackageName } // todo idk if this affects the performance but it is needed to have proper order
                         },
                         state = rowState,
                         screenWidth = screenWidth
                     ) { app ->
-                        filteredList[filteredList.indexOf(app)].added.value = false
-
-                        val allowedApps = state.allowedApps.toMutableList()
-                        allowedApps.remove(app.packageName)
-                        onEvent(EventActions.ChangeAllowedApps(allowedApps))
+                        onEvent(EventActions.ChangeAllowedApps(
+                            state.allowedApps.toMutableList().apply { this.remove(app.packageName) }
+                        ))
                     }
                 }
                 if (state.allowedApps.isNotEmpty() && searchQuery.value.isEmpty()) {
@@ -219,17 +208,18 @@ fun AppsScreen(
             }
 
             items(filteredList.size) { index ->
-                AppItem(app = filteredList[index], selectedBar = false, onClick = {
-                    val allowedApps = state.allowedApps.toMutableList()
-
-                    filteredList[index].added.value = if (!filteredList[index].added.value) {
-                        allowedApps.add(0, filteredList[index].packageName)
-                        true
-                    } else {
-                        allowedApps.remove(filteredList[index].packageName)
-                        false
-                    }
-                    onEvent(EventActions.ChangeAllowedApps(allowedApps))
+                AppItem(
+                    state = state,
+                    app = filteredList[index],
+                    allowedApp = state.eventStatus != EventStatus.NEVER_STARTED,
+                    onClick = {
+                    onEvent(EventActions.ChangeAllowedApps(
+                        if (!state.allowedApps.contains(filteredList[index].packageName)) {
+                            state.allowedApps.toMutableList().apply { this.add(0, filteredList[index].packageName) }
+                        } else {
+                            state.allowedApps.toMutableList().apply { this.remove(filteredList[index].packageName) }
+                        }
+                    ))
 
                     coroutineScope.launch {
                         if (rowState.firstVisibleItemIndex == 0) {
@@ -247,15 +237,25 @@ fun AppsScreen(
 }
 
 @Composable
-fun SelectedAppsRow(selectedApps: List<App>, state: LazyListState, screenWidth: Dp, onClick: (App) -> Unit) {
+fun SelectedAppsRow(
+    eventState: EventsStates, // todo affects performance?
+    selectedApps: List<App>,
+    state: LazyListState,
+    screenWidth: Dp,
+    appOnClick: (App) -> Unit
+) {
     Column {
-        SmallText("Allowed apps")
-        LazyRow(state = state, contentPadding = PaddingValues(horizontal = 10.dp), modifier = Modifier.fillMaxWidth()) {
+        LazyRow(
+            state = state,
+            contentPadding = PaddingValues(horizontal = 10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             items(
                 items = selectedApps,
-                key = { it.id }
+                key = { it.packageName }
             ) { item ->
                 AppItem(
+                    state = eventState,
                     app = item,
                     modifier = Modifier
                         .width(screenWidth)
@@ -267,8 +267,8 @@ fun SelectedAppsRow(selectedApps: List<App>, state: LazyListState, screenWidth: 
                                 stiffness = Spring.StiffnessLow
                             )
                         ),
-                    selectedBar = true,
-                    onClick = { onClick(item) }
+                    allowedApp = true,
+                    onClick = { appOnClick(item) }
                 )
             }
         }
@@ -296,75 +296,15 @@ fun SmallText(text: String, modifier: Modifier = Modifier) {
     )
 }
 
+
 @Composable
-fun AppsSearchBar(
-    textState: MutableState<String>,
+fun AppItem(
+    state: EventsStates,  // todo affects performance?
     modifier: Modifier = Modifier,
-    onValueChange: (String) -> Unit,
-    menuSelectAllOnClick: (() -> Unit)?,
-    menuUnselectAllOnClick: () -> Unit,
-    menuSortOnClick: (() -> Unit)?
+    app: App,
+    allowedApp: Boolean,
+    onClick: () -> Unit
 ) {
-    val focusManager = LocalFocusManager.current
-    var expanded by remember { mutableStateOf(false) }
-
-    TextField(
-        value = textState.value,
-        placeholder = { Text("Search") },
-        singleLine = true,
-        onValueChange = onValueChange,
-        leadingIcon = {
-            Icon(Icons.Default.Search, contentDescription = "Search", modifier = Modifier.padding(start = 16.dp))
-        },
-        trailingIcon = {
-            AnimatedVisibility(visible = textState.value.isEmpty()) {
-                Box {
-                    IconButton(onClick = { expanded = !expanded }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
-                    }
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(if (menuSelectAllOnClick != null) "Select all" else "Unselect all") },
-                            onClick = menuSelectAllOnClick ?: menuUnselectAllOnClick
-                        )
-                        DropdownMenuItem(
-                            text = { Text(if (menuSortOnClick != null) "Sort Alphabetically" else "Sort by app usage") },
-                            onClick = {
-                                // todo
-                            }
-                        )
-                    }
-                }
-            }
-            AnimatedVisibility(visible = textState.value.isNotEmpty()) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Empty search text",
-                    modifier = Modifier
-                        .clickable {
-                            textState.value = ""
-                            focusManager.clearFocus()
-                        }
-                        .padding(16.dp)
-                )
-            }
-        },
-        colors = TextFieldDefaults.colors(
-            unfocusedContainerColor = if (!isSystemInDarkTheme()) Color.White else MaterialTheme.colorScheme.surfaceContainerLow,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-        ),
-        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-        modifier = modifier.clip(RoundedCornerShape(50.dp))
-    )
-}
-
-@Composable
-fun AppItem(modifier: Modifier = Modifier, app: App, selectedBar: Boolean, onClick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -390,9 +330,9 @@ fun AppItem(modifier: Modifier = Modifier, app: App, selectedBar: Boolean, onCli
                 modifier = Modifier.size(58.dp)
             )
             CircularCheckbox(
-                checked = app.added.value,
+                checked = state.allowedApps.contains(app.packageName),
                 modifier = Modifier.offset(x = (-4).dp, y = (-2).dp),
-                selectedBar = selectedBar
+                selectedBar = allowedApp
             )
         }
         Text(
@@ -452,6 +392,6 @@ fun CircularCheckbox(
 @Composable
 fun AppsPreview() {
     TimePilotDemoTheme {
-      // AppsWebsScreen(listOf(List(80) { App(name = "$it Hello", packageName = it.toString(), icon = painterResource(id = R.drawable.ic_launcher_background)) }).flatten(), rememberNavController())
+        //AppsWebsScreen(EventsStates(), {}, listOf(List(80) { App(name = "$it Hello", packageName = it.toString(), icon = painterResource(id = R.drawable.ic_launcher_background)) }).flatten(), rememberNavController())
     }
 }

@@ -79,7 +79,7 @@ fun EventCard(
             Row(Modifier.padding(bottom = 20.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = event.eventName.ifBlank { "Untitled" },
+                        text = event.eventName,
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                         maxLines = 1,

@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "92f823c99a2421c53e176eb34341fc70",
+    "identityHash": "d9db6ed1c0d59c0ca2c8ab97a997a679",
     "entities": [
       {
         "tableName": "Event",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`eventName` TEXT NOT NULL, `date` TEXT NOT NULL, `minTime` INTEGER NOT NULL, `maxTime` INTEGER NOT NULL, `trackingMode` TEXT NOT NULL, `timeSpent` INTEGER NOT NULL, `eventColor` TEXT NOT NULL, `anyTimeEvent` INTEGER NOT NULL, `eventStatus` TEXT NOT NULL, `repeat` TEXT NOT NULL, `allowedApps` TEXT NOT NULL, `blockedWebs` TEXT NOT NULL, `allowedWebs` TEXT NOT NULL, `customApps` TEXT NOT NULL, `position` INTEGER NOT NULL, `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`eventName` TEXT NOT NULL, `date` TEXT NOT NULL, `minTime` INTEGER NOT NULL, `maxTime` INTEGER NOT NULL, `trackingMode` TEXT NOT NULL, `timeSpent` INTEGER NOT NULL, `eventColor` TEXT NOT NULL, `anyTimeEvent` INTEGER NOT NULL, `eventStatus` TEXT NOT NULL, `repeat` TEXT NOT NULL, `allowedApps` TEXT NOT NULL, `blockedWebs` TEXT NOT NULL, `allowedWebs` TEXT NOT NULL, `customAppsYt` TEXT NOT NULL, `position` INTEGER NOT NULL, `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL)",
         "fields": [
           {
             "fieldPath": "eventName",
@@ -87,8 +87,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "customApps",
-            "columnName": "customApps",
+            "fieldPath": "customAppsYt",
+            "columnName": "customAppsYt",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -118,7 +118,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '92f823c99a2421c53e176eb34341fc70')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd9db6ed1c0d59c0ca2c8ab97a997a679')"
     ]
   }
 }

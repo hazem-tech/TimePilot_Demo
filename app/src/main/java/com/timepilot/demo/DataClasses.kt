@@ -1,7 +1,5 @@
 package com.timepilot.demo
 
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -11,7 +9,7 @@ import java.util.UUID
 
 @Entity
 data class Event(
-    var eventName: String = "",
+    var eventName: String = "Untitled event",
     var date: String, // as yyyy-MM-dd
     var minTime: Int = 15, // in minutes
     var maxTime: Int = 30, // in minutes
@@ -24,7 +22,7 @@ data class Event(
     var allowedApps: List<String> = listOf(), // package names
     var blockedWebs: List<String> = listOf(),
     var allowedWebs: List<String> = listOf(),
-    var customApps: List<String> = listOf(),
+    var customAppsYt: List<String> = listOf(), // "BLOCK_SHORTS", "BLOCK_ALL", anything else in the list is the exceptions
     var position: Int,
     @PrimaryKey(autoGenerate = true)
     var id: Int = 0
@@ -32,18 +30,20 @@ data class Event(
 
 data class EventsStates(
     val allEvent: List<Event> = emptyList(),
-    val eventName: String = "",
+    val allInstalledApps: List<App> = emptyList(),
+    val eventName: String = "Untitled event",
     val date: String = LocalDate.now().toString(),
     val anyTimeTask: Boolean = false,
     val minTime: Int = 15,
     val maxTime: Int = 30,
     var trackingMode: String = "Countdown",
+    var eventStatus: EventStatus = EventStatus.NEVER_STARTED,
     var eventColor: String = "Main",
     var repeat: List<String> = listOf("0", "0"),
     var allowedApps: List<String> = listOf(),
     var blockedWebs: List<String> = listOf(),
     var allowedWebs: List<String> = listOf(),
-    var customApps: List<String> = listOf(),
+    var customAppsYt: List<String> = listOf(),
     var position: Int = 0,
     var isPartialSheet: Boolean = false,
     var isFullSheet: Boolean = false,
@@ -70,18 +70,22 @@ sealed interface EventActions {
     data class ChangeAllowedApps(val allowedApps: List<String>): EventActions
     data class ChangeBlockedWebs(val blockedWebsites: List<String>): EventActions
     data class ChangeAllowedWebs(val allowedWebsites: List<String>): EventActions
-    data class SetCustomApps(val youtube: List<String>): EventActions
+    data class ChangeCustomApps(val youtube: List<String>): EventActions
     data class ChangeEventPosition(val event: Event): EventActions
     data class SwitchHideMoreOptions(val value: Boolean): EventActions
     data class DeleteEvent(val event: Event): EventActions
+    data class UpdateInstalledApps(val allUserApps: List<App>): EventActions
 }
 
 data class App(
-    val id: String = UUID.randomUUID().toString(),
     val name: String,
     val packageName: String,
     val icon: Painter,
-    var added: MutableState<Boolean> = mutableStateOf(false)
+)
+
+data class UniqueString(
+    val value: String,
+    val id: UUID = UUID.randomUUID()
 )
 
 enum class EventStatus {
