@@ -84,7 +84,7 @@ data class App(
 )
 
 data class UniqueString(
-    val value: String,
+    val text: String,
     val id: UUID = UUID.randomUUID()
 )
 

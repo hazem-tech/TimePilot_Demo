@@ -14,7 +14,7 @@ import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.AutoGraph
-import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.FilterTiltShift
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.TipsAndUpdates
@@ -94,7 +94,7 @@ fun SettingsScreen(navController: NavController) {
                 headlineContent = { Text( "Focus Mode") },
                 leadingContent = {
                     Icon(
-                        Icons.Outlined.Lock,
+                        Icons.Outlined.FilterTiltShift,
                         contentDescription = null,
                     )
                 },

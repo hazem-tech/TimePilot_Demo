@@ -141,7 +141,7 @@ fun AppsScreen(
     val screenWidth = (LocalConfiguration.current.screenWidthDp.dp - 20.dp)  / appsGridCells
 
     Column {
-        if (state.eventStatus != EventStatus.NEVER_STARTED) {
+        if (state.eventStatus == EventStatus.NEVER_STARTED) {
             AppsSearchBar(
                 textState = searchQuery,
                 onValueChange = {

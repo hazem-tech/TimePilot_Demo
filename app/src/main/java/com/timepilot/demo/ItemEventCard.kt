@@ -66,105 +66,104 @@ fun EventCard(
     val buttonColor = if (!isSystemInDarkTheme()) Color.White.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.05f)
 
     // or Surface, or Card, i have no idea
-    Box(modifier.clip(RoundedCornerShape(18.dp))) {
-        Column (
-            Modifier.background(
-                Brush.linearGradient(
-                    colors = listOf(backgroundBarColor, backgroundColor),
-                    start = Offset(event.timeSpent * 0.8f, 0f),
-                    end = Offset(event.timeSpent * 1.4f, 0f) // to get around 100 more to make it soft
+    Box(modifier.clip(RoundedCornerShape(18.dp))
+        .background(
+            Brush.linearGradient(
+                colors = listOf(backgroundBarColor, backgroundColor),
+                start = Offset(event.timeSpent * 0.8f, 0f),
+                end = Offset(event.timeSpent * 1.4f, 0f) // to get around 100 more to make it soft
+            ))
+        .padding(20.dp))
+    { Column {
+        Row(Modifier.padding(bottom = 20.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = event.eventName,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            ).padding(20.dp)
-        ) {
-            Row(Modifier.padding(bottom = 20.dp)) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (event.repeat[0].toInt() > 0) {
                     Text(
-                        text = event.eventName,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        text = "Repeated every ${event.repeat[0].toInt()} ${if (event.repeat[1] == "DAILY") "days" else "weeks"}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    if (event.repeat[0].toInt() > 0) {
-                        Text(
-                            text = "Repeated every ${event.repeat[0].toInt()} ${if (event.repeat[1] == "DAILY") "days" else "weeks"}",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Outlined.AccessTime,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.65f),
-                            contentDescription = null
-                        )
-                        Text(
-                            text = "${durationFormatting(event.minTime, true)} - ${durationFormatting(event.maxTime, true)}",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
                 }
-
-                if (!previewHideIcons) {
-                    AppsIcons(
-                        allowedApps = event.allowedApps,
-                        horizontalArrangement = Arrangement.spacedBy((-12).dp),
-                        iconsSize = 30.dp,
-                        backgroundColor = backgroundColor,
-                        showEmpty = true
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.AccessTime,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.65f),
+                        contentDescription = null
+                    )
+                    Text(
+                        text = "${durationFormatting(event.minTime, true)} - ${durationFormatting(event.maxTime, true)}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
-            // TODO() show start button if no even is selected and running && (this is the first task in the day or anytime task is enabled)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.CenterHorizontally)
+            if (!previewHideIcons) {
+                AppsIcons(
+                    allowedApps = event.allowedApps,
+                    horizontalArrangement = Arrangement.spacedBy((-12).dp),
+                    iconsSize = 30.dp,
+                    backgroundColor = backgroundColor,
+                    showEmpty = true
+                )
+            }
+        }
+
+        // TODO() show start button if no even is selected and running && (this is the first task in the day or anytime task is enabled)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.CenterHorizontally)
+        ) {
+            FilledTonalButton(
+                colors = ButtonDefaults.elevatedButtonColors(
+                    containerColor = buttonColor,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                contentPadding = PaddingValues(horizontal = 24.dp),
+                onClick = if (event.eventStatus == EventStatus.NEVER_STARTED) startOnClick else pauseOnClick
             ) {
+                Icon(
+                    imageVector = if (event.eventStatus == EventStatus.NEVER_STARTED) Icons.Default.PlayArrow else Icons.Default.Pause,
+                    contentDescription = null
+                )
+                Text(
+                    text = if (event.eventStatus == EventStatus.NEVER_STARTED) "Start" else "Pause",
+                    modifier = Modifier.padding(horizontal = 3.dp, vertical = 12.dp)
+                )
+            }
+
+            if (event.eventStatus != EventStatus.NEVER_STARTED) { // show only after we start, even if it's gonna disabled
                 FilledTonalButton(
                     colors = ButtonDefaults.elevatedButtonColors(
                         containerColor = buttonColor,
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ),
                     contentPadding = PaddingValues(horizontal = 24.dp),
-                    onClick = if (event.eventStatus == EventStatus.NEVER_STARTED) startOnClick else pauseOnClick
+                    onClick = markOnClick
                 ) {
                     Icon(
-                        imageVector = if (event.eventStatus == EventStatus.NEVER_STARTED) Icons.Default.PlayArrow else Icons.Default.Pause,
+                        imageVector = Icons.Outlined.CheckCircle,
                         contentDescription = null
                     )
                     Text(
-                        text = if (event.eventStatus == EventStatus.NEVER_STARTED) "Start" else "Pause",
-                        modifier = Modifier.padding(horizontal = 3.dp, vertical = 12.dp)
+                        text = "Mark as done",
+                        Modifier.padding(start = 3.dp, top = 12.dp, bottom = 12.dp)
                     )
-                }
-
-                if (event.eventStatus != EventStatus.NEVER_STARTED) { // show only after we start, even if it's gonna disabled
-                    FilledTonalButton(
-                        colors = ButtonDefaults.elevatedButtonColors(
-                            containerColor = buttonColor,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        contentPadding = PaddingValues(horizontal = 24.dp),
-                        onClick = markOnClick
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.CheckCircle,
-                            contentDescription = null
-                        )
-                        Text(
-                            text = "Mark as done",
-                            Modifier.padding(start = 3.dp, top = 12.dp, bottom = 12.dp)
-                        )
-                    }
                 }
             }
         }
+    }
     }
 }
 

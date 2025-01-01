@@ -9,7 +9,12 @@ import android.os.Process
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandIn
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
@@ -24,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
@@ -33,6 +39,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.MoreTime
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.TipsAndUpdates
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -95,6 +102,7 @@ fun NewEvent(
 ) {
     val focusManager = LocalFocusManager.current
     var fullScreenItemsShown by remember { mutableFloatStateOf(0f) }
+    val showAnyTimeTip = remember { mutableStateOf(false) }
     val openDateDialog = remember { mutableStateOf(false) }
     val openCancelAlertDialog = remember { mutableStateOf(false) }
     val openDeleteAlertDialog = remember { mutableStateOf(false) }
@@ -254,7 +262,8 @@ fun NewEvent(
                                 leadingIcon = {
                                     Box(
                                         contentAlignment = Alignment.Center,
-                                        modifier = Modifier.size(34.dp)
+                                        modifier = Modifier
+                                            .size(34.dp)
                                             .clip(CircleShape)
                                             .background(color.second)
                                     ) {
@@ -367,9 +376,13 @@ fun NewEvent(
                             onCheckedChange = {
                                 // todo show tip everytime enable it if one task from any date contains it is on, it will not show the tip ever again
                                 onEvent(EventActions.ChangeAnytime(it))
+                                showAnyTimeTip.value = true
                             })
                     },
-                    modifier = Modifier.clickable(onClick = { onEvent(EventActions.ChangeAnytime(!state.anyTimeTask)) }) // todo show popup explain first time
+                    modifier = Modifier.clickable(onClick = {
+                        onEvent(EventActions.ChangeAnytime(!state.anyTimeTask))
+                        showAnyTimeTip.value = true
+                    })
                 )
 
                 if (state.alreadyCreatedEvent != null) {
@@ -398,6 +411,40 @@ fun NewEvent(
                             dialogTitle = "Are you sure you want to delete ${state.eventName}?",
                             mainButton = "Delete"
                         )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = showAnyTimeTip.value,
+                    enter = scaleIn(initialScale = 0.6f, animationSpec = tween(400, easing = customEasing)) + fadeIn(),
+                    exit = scaleOut(targetScale = 0.7f, animationSpec = tween(200, easing = customEasing)) + fadeOut()
+                ) {
+                    Box(
+                        Modifier
+                            .padding(20.dp)
+                            .clip(RoundedCornerShape(30.dp))
+                            .background(MaterialTheme.colorScheme.tertiaryContainer)
+                            .padding(18.dp)
+                    ) {
+                        Column(horizontalAlignment = Alignment.End) {
+                            Row {
+                                Icon(
+                                    Icons.Outlined.TipsAndUpdates,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.padding(14.dp)
+                                )
+                                Text(
+                                    "By default, tasks are completed in order. Enable Anytime to start it anytime, even if it’s not the first one.",
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                            TextButton({
+                                showAnyTimeTip.value = false
+                            }) {
+                                Text("Got it", color = MaterialTheme.colorScheme.onTertiaryContainer)
+                            }
+                        }
                     }
                 }
             }
