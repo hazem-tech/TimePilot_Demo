@@ -1,5 +1,6 @@
 package com.timepilot.demo
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -38,11 +39,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -64,43 +63,45 @@ fun WebsScreen(
     onEvent: (EventActions) -> Unit,
 ) {
     // todo if allowed apps does not have browser or youtube, it will show a popup that all browsers are added
-    // the goal is to have unique ones like white writing even unique and be stable not changing depending on the index or smth to make animations correct
-    val blockedList = remember { mutableStateListOf<UniqueString>() }
-    val allowedList = remember { mutableStateListOf<UniqueString>() }
-    blockedList.addAll(state.blockedWebs.map { UniqueString(text = it) })
-    allowedList.addAll(state.allowedWebs.map { UniqueString(text = it) })
     val suggestionChips = listOf("Block all websites", "TikTok", "YouTube", "Instagram")
+    val focusManager = LocalFocusManager.current // for when you tap on a suggestion chip
 
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             AddItemButton("Blocked websites") {
-                if (blockedList.getOrNull(0)?.text?.isBlank() != true) {
-                    blockedList.add(0, UniqueString(""))
+                if (state.blockedWebs.getOrNull(0)?.text?.isBlank() != true) {
+                    onEvent(EventActions.ChangeBlockedWebs(
+                        listOf(UniqueString("")) + state.blockedWebs
+                    ))
                 }
             }
         }
 
         itemsIndexed(
-            items = blockedList,
+            items = if (!state.blockedWebs.any { it.text == "Blockallwebsites" }) {
+                state.blockedWebs
+            } else {
+                state.blockedWebs.filter { it.text == "Blockallwebsites" }
+            },
             key = { _, item -> item.id }
         ) { index, item ->
             WebsiteItem(
-                itemName = item.text,
+                itemName = if (item.text != "Blockallwebsites") item.text else "Block all websites",
                 onValueChange = { newText ->
-                    blockedList[index] = blockedList[index].copy(text = newText)
+                    onEvent(EventActions.ChangeBlockedWebs(
+                        state.blockedWebs.toMutableList().apply {
+                            this[index] = state.blockedWebs[index].copy(text = newText)
+                        }
+                    ))
                 },
                 hint = "Type blocked URL...",
                 checkDuplicatedItem = {
-                    val uniqueBlockedList = filterList(blockedList, allowedList)
-                    blockedList.clear()
-                    blockedList.addAll(uniqueBlockedList)
-
-                    val uniqueAllowedList = filterList(allowedList, blockedList)
-                    allowedList.clear()
-                    allowedList.addAll(uniqueAllowedList)
-
-                    onEvent(EventActions.ChangeBlockedWebs(blockedList.map { it.text }))
-                    onEvent(EventActions.ChangeAllowedWebs(allowedList.map { it.text }))
+                    onEvent(EventActions.ChangeBlockedWebs(
+                        filterList(state.blockedWebs, state.allowedWebs)
+                    ))
+                    onEvent(EventActions.ChangeAllowedWebs(
+                        filterList(state.allowedWebs, state.blockedWebs)
+                    ))
                 },
                 modifier = Modifier
                     .animateItem(
@@ -113,7 +114,7 @@ fun WebsScreen(
                     )
             )
 
-            if (item.text.isBlank()) {
+            if (index == 0 && item.text.isBlank()) {
                 Column {
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -122,13 +123,12 @@ fun WebsScreen(
                         items(suggestionChips) { suggestionName ->
                             SuggestionChip(
                                 onClick = {
-                                    val uniqueList = blockedList.mapIndexed { index, item ->
-                                        if (index == 0) item.copy(text = suggestionName) else item
-                                    }
-                                    blockedList.clear()
-                                    blockedList.addAll(uniqueList)
-
-                                    onEvent(EventActions.ChangeBlockedWebs(blockedList.map { it.text }))
+                                    onEvent(EventActions.ChangeBlockedWebs(
+                                        state.blockedWebs.mapIndexed { index, item ->
+                                            if (index == 0) item.copy(text = suggestionName) else item
+                                        }
+                                    ))
+                                    focusManager.clearFocus()
                                 },
                                 label = { Text(suggestionName) }
                             )
@@ -139,40 +139,42 @@ fun WebsScreen(
         }
 
         item {
-            if (blockedList.any { it.text.isNotBlank() }) {
+            if (state.blockedWebs.any { it.text.isNotBlank() }) {
                 Column {
                     HorizontalDivider()
                     AddItemButton("Allowed websites") {
-                        if (allowedList.getOrNull(0)?.text?.isBlank() != true) {
-                            allowedList.add(0, UniqueString(""))
+                        if (state.allowedWebs.getOrNull(0)?.text?.isBlank() != true) {
+                            onEvent(EventActions.ChangeAllowedWebs(
+                                listOf(UniqueString("")) + state.allowedWebs
+                            ))
                         }
                     }
                 }
             }
         }
 
-        if (blockedList.any { it.text.isNotBlank() }) {
+        if (state.blockedWebs.any { it.text.isNotBlank() }) {
             itemsIndexed(
-                items = allowedList,
+                items = state.allowedWebs,
                 key = { _, item -> item.id }
             ) { index, item ->
                 WebsiteItem(
                     itemName = item.text,
                     onValueChange = { newText ->
-                        allowedList[index] = allowedList[index].copy(text = newText)
+                        onEvent(EventActions.ChangeAllowedWebs(
+                            state.allowedWebs.toMutableList().apply {
+                                this[index] = state.allowedWebs[index].copy(text = newText)
+                            }
+                        ))
                     },
                     hint = "Type allowed URL...",
                     checkDuplicatedItem = {
-                        val uniqueBlockedList = filterList(blockedList, allowedList)
-                        blockedList.clear()
-                        blockedList.addAll(uniqueBlockedList)
-
-                        val uniqueAllowedList = filterList(allowedList, blockedList)
-                        allowedList.clear()
-                        allowedList.addAll(uniqueAllowedList)
-
-                        onEvent(EventActions.ChangeBlockedWebs(blockedList.map { it.text }))
-                        onEvent(EventActions.ChangeAllowedWebs(allowedList.map { it.text }))
+                        onEvent(EventActions.ChangeBlockedWebs(
+                            filterList(state.blockedWebs, state.allowedWebs)
+                        ))
+                        onEvent(EventActions.ChangeAllowedWebs(
+                            filterList(state.allowedWebs, state.blockedWebs)
+                        ))
                     },
                     modifier = Modifier
                         .animateItem(
@@ -217,7 +219,7 @@ fun WebsiteItem(
     var isFocused by remember { mutableStateOf(false) }
 
     LaunchedEffect(itemName, isFocused) {
-        if (itemName.isBlank() && !isFocused) {
+        if (itemName == "" && !isFocused) {
             focusRequester.requestFocus()
         } else if (!isFocused) {
             checkDuplicatedItem()
@@ -256,8 +258,8 @@ fun WebsiteItem(
                 Checkbox(
                     checked = true,
                     onCheckedChange = {
-                        onValueChange("")
-                        checkDuplicatedItem()
+                        onValueChange(" ")
+                        isFocused = false
                     }
                 )
             }
@@ -274,7 +276,7 @@ fun WebsiteItem(
                             focusManager.clearFocus()
                             isFocused = false
                         }
-                        .padding(16.dp)
+                        .padding(12.dp)
                 )
             }
         },
@@ -296,8 +298,6 @@ fun CustomAppScreen(
     state: EventsStates,
     onEvent: (EventActions) -> Unit,
 ) {
-    val ytList = remember { mutableStateListOf<UniqueString>() }
-    ytList.addAll(state.customAppsYt.map { UniqueString(text = it) })
     val pm = LocalContext.current.packageManager
 
     LazyColumn(Modifier.fillMaxSize()) {
@@ -322,11 +322,11 @@ fun CustomAppScreen(
                 headlineContent = { Text("Block Shorts") },
                 trailingContent = {
                     Switch(
-                        checked = ytList.any { it.text == "BLOCK_SHORTS" },
-                        onCheckedChange = { updateCustomAppsList("BLOCK_SHORTS", ytList, onEvent) }
+                        checked = state.customAppsYt.any { it.text == "BLOCK_SHORTS" },
+                        onCheckedChange = { updateCustomAppsList("BLOCK_SHORTS", state.customAppsYt, onEvent) }
                     )
                 },
-                modifier = Modifier.clickable { updateCustomAppsList("BLOCK_SHORTS", ytList, onEvent) }.padding(horizontal = 12.dp)
+                modifier = Modifier.clickable { updateCustomAppsList("BLOCK_SHORTS", state.customAppsYt, onEvent) }.padding(horizontal = 12.dp)
             )
         }
 
@@ -335,44 +335,50 @@ fun CustomAppScreen(
                 headlineContent = { Text("Block all videos") },
                 trailingContent = {
                     Switch(
-                        checked = ytList.any { it.text == "BLOCK_ALL" },
-                        onCheckedChange = { updateCustomAppsList("BLOCK_ALL", ytList, onEvent) }
+                        checked = state.customAppsYt.any { it.text == "BLOCK_ALL" },
+                        onCheckedChange = { updateCustomAppsList("BLOCK_ALL", state.customAppsYt, onEvent) }
                     )
                 },
-                modifier = Modifier.clickable { updateCustomAppsList("BLOCK_ALL", ytList, onEvent) }.padding(horizontal = 12.dp)
+                modifier = Modifier.clickable { updateCustomAppsList("BLOCK_ALL", state.customAppsYt, onEvent) }.padding(horizontal = 12.dp)
             )
         }
 
         item {
             AnimatedVisibility(
-                visible = ytList.any { it.text == "BLOCK_ALL" },
+                visible = state.customAppsYt.any { it.text == "BLOCK_ALL" },
                 enter = slideInVertically() + fadeIn(),
                 exit = slideOutVertically() + fadeOut()
             ) {
                 AddItemButton("Exception keywords") {
-                    if (ytList.filter { it.text != "BLOCK_ALL" && it.text != "BLOCK_SHORTS" }.getOrNull(0)?.text?.isBlank() != true) {
-                        ytList.add(0, UniqueString(""))
+                    if (state.customAppsYt.filter { it.text != "BLOCK_ALL" && it.text != "BLOCK_SHORTS" }.getOrNull(0)?.text?.isBlank() != true) {
+                        onEvent(EventActions.ChangeCustomApps(
+                            listOf(UniqueString("")) + state.customAppsYt
+                        ))
                     }
                 }
             }
         }
 
-        if (ytList.any { it.text == "BLOCK_ALL" }) { // only show lists if i enable block videos
+        if (state.customAppsYt.any { it.text == "BLOCK_ALL" }) { // only show lists if i enable block videos
             itemsIndexed(
-                items = ytList.filter { it.text != "BLOCK_ALL" && it.text != "BLOCK_SHORTS" },
+                items = state.customAppsYt.filter { it.text != "BLOCK_ALL" && it.text != "BLOCK_SHORTS" },
                 key = { _, item -> item.id }
             ) { index, item ->
                 WebsiteItem(
                     itemName = item.text,
                     onValueChange = { newText ->
-                        ytList[index] = ytList[index].copy(text = newText)
+                        onEvent(EventActions.ChangeCustomApps(
+                            state.customAppsYt.toMutableList().apply {
+                                this[index] = state.customAppsYt[index].copy(text = newText)
+                            }
+                        ))
                     },
                     hint = "Type video keyword or channel...",
                     checkDuplicatedItem = {
-                        val uniqueList = ytList.filter { it.text.isNotBlank() }.distinctBy { it.text }
-                        ytList.clear()
-                        ytList.addAll(uniqueList)
-                        onEvent(EventActions.ChangeCustomApps(ytList.map { it.text }))
+                        onEvent(EventActions.ChangeCustomApps(
+                            state.customAppsYt.filter { it.text.isNotBlank() }.distinctBy { it.text }
+                        ))
+                        Log.d("CustomAppScreen", "checkDuplicatedItem: ${state.customAppsYt}")
                     },
                     modifier = Modifier
                         .animateItem(
@@ -389,13 +395,14 @@ fun CustomAppScreen(
     }
 }
 
-fun updateCustomAppsList(text: String, list: SnapshotStateList<UniqueString>, onEvent: (EventActions) -> Unit) {
-    if (list.find { it.text == text } != null) {
-        list.removeIf { it.text == text }
-    } else {
-        list.add(UniqueString(text = text))
-    }
-    onEvent(EventActions.ChangeCustomApps(list.map { it.text }))
+fun updateCustomAppsList(text: String, list: List<UniqueString>, onEvent: (EventActions) -> Unit) {
+    onEvent(EventActions.ChangeCustomApps(
+        if (list.find { it.text == text } != null) {
+            list.toMutableList().apply { this.removeIf { it.text == text } }
+        } else {
+            list.toMutableList().apply { this.add(UniqueString(text = text)) }
+        }
+    ))
 }
 
 @Preview

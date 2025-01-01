@@ -67,7 +67,7 @@ class MainActivity : ComponentActivity() {
 
                     val colorsOptions = listOf(
                         Pair("Main",
-                            if (!isSystemInDarkTheme()) colorResource(com.google.android.material.R.color.material_dynamic_primary80)
+                            if (!isSystemInDarkTheme()) colorResource(com.google.android.material.R.color.material_dynamic_primary90)
                             else colorResource(com.google.android.material.R.color.material_dynamic_primary10)),
                         Pair("Red", if (!isSystemInDarkTheme()) Color(0xFFF5BABA) else Color(0xFF341314)),
                         Pair("Green", if (!isSystemInDarkTheme()) Color(0xFFBAF5CC) else Color(0xFF143413) ),

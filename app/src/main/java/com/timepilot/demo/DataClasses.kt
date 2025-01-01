@@ -20,9 +20,9 @@ data class Event(
     var eventStatus: EventStatus = EventStatus.NEVER_STARTED,
     var repeat: List<String> = listOf("0", "DAILY"), // repeat[0] times, repeat[1] = type, the rest is the days
     var allowedApps: List<String> = listOf(), // package names
-    var blockedWebs: List<String> = listOf(),
-    var allowedWebs: List<String> = listOf(),
-    var customAppsYt: List<String> = listOf(), // "BLOCK_SHORTS", "BLOCK_ALL", anything else in the list is the exceptions
+    var blockedWebs: List<UniqueString> = listOf(),
+    var allowedWebs: List<UniqueString> = listOf(),
+    var customAppsYt: List<UniqueString> = listOf(), // "BLOCK_SHORTS", "BLOCK_ALL", anything else in the list is the exceptions
     var position: Int,
     @PrimaryKey(autoGenerate = true)
     var id: Int = 0
@@ -41,9 +41,9 @@ data class EventsStates(
     var eventColor: String = "Main",
     var repeat: List<String> = listOf("0", "0"),
     var allowedApps: List<String> = listOf(),
-    var blockedWebs: List<String> = listOf(),
-    var allowedWebs: List<String> = listOf(),
-    var customAppsYt: List<String> = listOf(),
+    var blockedWebs: List<UniqueString> = listOf(),
+    var allowedWebs: List<UniqueString> = listOf(),
+    var customAppsYt: List<UniqueString> = listOf(),
     var position: Int = 0,
     var isPartialSheet: Boolean = false,
     var isFullSheet: Boolean = false,
@@ -68,9 +68,9 @@ sealed interface EventActions {
     data class SetColor(val eventColor: String): EventActions
     data class SetRepeat(val repeat: List<String>): EventActions
     data class ChangeAllowedApps(val allowedApps: List<String>): EventActions
-    data class ChangeBlockedWebs(val blockedWebsites: List<String>): EventActions
-    data class ChangeAllowedWebs(val allowedWebsites: List<String>): EventActions
-    data class ChangeCustomApps(val youtube: List<String>): EventActions
+    data class ChangeBlockedWebs(val blockedWebsites: List<UniqueString>): EventActions
+    data class ChangeAllowedWebs(val allowedWebsites: List<UniqueString>): EventActions
+    data class ChangeCustomApps(val youtube: List<UniqueString>): EventActions
     data class ChangeEventPosition(val event: Event): EventActions
     data class SwitchHideMoreOptions(val value: Boolean): EventActions
     data class DeleteEvent(val event: Event): EventActions
@@ -101,8 +101,18 @@ class Converters {
     }
 
     @TypeConverter
-    fun fromList(list: List<String>): String {
+    fun fromListString(list: List<String>): String {
         return if (list.isEmpty()) "" else list.joinToString(",")
+    }
+
+    @TypeConverter
+    fun fromUniqueString(value: String): List<UniqueString> {
+        return if (value.isEmpty()) emptyList() else value.split(",").map { UniqueString(it) }
+    }
+
+    @TypeConverter
+    fun fromListOfUniqueString(list: List<UniqueString>): String {
+        return if (list.isEmpty()) "" else list.joinToString(",") { it.text }
     }
 
     @TypeConverter

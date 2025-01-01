@@ -3,7 +3,6 @@ package com.timepilot.demo
 import android.annotation.SuppressLint
 import android.graphics.BlurMaskFilter
 import android.util.Log
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -11,9 +10,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -63,7 +59,6 @@ import com.timepilot.demo.ui.theme.TimePilotDemoTheme
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 @SuppressLint("UnusedContentLambdaTargetStateParameter")
 @Composable
@@ -86,11 +81,7 @@ fun EventsList(
     }
     var selected by remember { mutableStateOf(LocalDate.now()) }
 
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .padding(innerPadding)) {
-        // TODO() the lazy column for the events and the calendar cells works with slide animation
-
+    Box(Modifier.fillMaxSize().padding(innerPadding)) {
         Column {
             CalendarBar(
                 selected = selected,
@@ -103,68 +94,66 @@ fun EventsList(
             )
 
             if (state.allEvent.isNotEmpty()) {
-                AnimatedVisibility(
-                    visible = true,
-                    enter = scaleIn(initialScale = 0f, animationSpec = tween(300, easing = customEasing)),
-                    exit = scaleOut(targetScale = 0f, animationSpec = tween(300, easing = customEasing))
+//                AnimatedVisibility(
+//                    visible = true,
+//                    enter = scaleIn(initialScale = 0f, animationSpec = tween(300, easing = customEasing)),
+//                    exit = scaleOut(targetScale = 0f, animationSpec = tween(300, easing = customEasing))
+//                ) {
+//                    AnimatedContent(
+//                        targetState = state.allEvent,
+//                        transitionSpec = {
+//                            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+//                            val isForward = LocalDate.parse(
+//                                targetState[0].date,
+//                                formatter
+//                            ) > LocalDate.parse((initialState[0].date), formatter)
+//                            slideInHorizontally(initialOffsetX = { if (isForward) it else -it }) togetherWith
+//                                    slideOutHorizontally(targetOffsetX = { if (isForward) -it else it })
+//                        },
+//                        label = "EventsListSwipeAnimation",
+//                    ) { eventsList ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = lazyListState,
+                    contentPadding = PaddingValues(
+                        start = 9.dp,
+                        end = 9.dp,
+                        top = 12.dp,
+                        bottom = 40.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(9.dp),
                 ) {
-                    AnimatedContent(
-                        targetState = state.allEvent,
-                        transitionSpec = {
-                            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-                            val isForward = LocalDate.parse(
-                                targetState[0].date,
-                                formatter
-                            ) > LocalDate.parse((initialState[0].date), formatter)
-                            slideInHorizontally(initialOffsetX = { if (isForward) it else -it }) togetherWith
-                                    slideOutHorizontally(targetOffsetX = { if (isForward) -it else it })
-                        },
-                        label = "EventsListSwipeAnimation",
-                    ) { eventsList ->
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            state = lazyListState,
-                            contentPadding = PaddingValues(
-                                start = 9.dp,
-                                end = 9.dp,
-                                top = 12.dp,
-                                bottom = 40.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(9.dp),
-                        ) {
-                            items(
-                                eventsList,
-                                key = { it.id }) { event ->
-                                ReorderableItem(reorderableLazyListState, key = event.id) {
-                                    EventCard(
-                                        event = event,
-                                        modifier = Modifier
-                                            .clickable {
-                                                onEvent(EventActions.SetUpStates(event))
-                                                onEvent(EventActions.ShowFullSheet(event.id))
-                                            }
-                                            .longPressDraggableHandle(
-                                                onDragStarted = {
-                                                    ViewCompat.performHapticFeedback(
-                                                        view,
-                                                        HapticFeedbackConstantsCompat.GESTURE_START
-                                                    )
-                                                },
-                                                onDragStopped = {
-                                                    ViewCompat.performHapticFeedback(
-                                                        view,
-                                                        HapticFeedbackConstantsCompat.GESTURE_END
-                                                    )
-                                                },
-                                            ),
-                                        startOnClick = {},
-                                        pauseOnClick = {},
-                                        markOnClick = {},
-                                        backgroundBarColor = colors.find { it.first == event.eventColor }?.second
-                                            ?: Color.Red,
-                                    )
-                                }
-                            }
+                    items(
+                        state.allEvent,
+                        key = { it.id }) { event ->
+                        ReorderableItem(reorderableLazyListState, key = event.id) {
+                            EventCard(
+                                event = event,
+                                modifier = Modifier
+                                    .clickable {
+                                        onEvent(EventActions.SetUpStates(event))
+                                        onEvent(EventActions.ShowFullSheet(event.id))
+                                    }
+                                    .longPressDraggableHandle(
+                                        onDragStarted = {
+                                            ViewCompat.performHapticFeedback(
+                                                view,
+                                                HapticFeedbackConstantsCompat.GESTURE_START
+                                            )
+                                        },
+                                        onDragStopped = {
+                                            ViewCompat.performHapticFeedback(
+                                                view,
+                                                HapticFeedbackConstantsCompat.GESTURE_END
+                                            )
+                                        },
+                                    ),
+                                startOnClick = {},
+                                pauseOnClick = {},
+                                markOnClick = {},
+                                backgroundBarColor = colors.find { it.first == event.eventColor }?.second
+                                    ?: Color.Red,
+                            )
                         }
                     }
                 }
@@ -295,7 +284,6 @@ fun EventsList(
             composable("eventSheet") {
                 NewEvent(
                     state = state,
-                    initialState = remember { state.copy() },
                     onEvent = onEvent,
                     sheetHeight = sheetHeight,
                     colors = colors,

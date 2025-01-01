@@ -94,7 +94,6 @@ import kotlin.math.absoluteValue
 @Composable
 fun NewEvent(
     state: EventsStates,
-    initialState: EventsStates, // used to check if changes happen so it will show alert when cancelling
     onEvent: (EventActions) -> Unit,
     sheetHeight: Float,
     colors: List<Pair<String,Color>>,
@@ -103,23 +102,36 @@ fun NewEvent(
     val focusManager = LocalFocusManager.current
     var fullScreenItemsShown by remember { mutableFloatStateOf(0f) }
     val showAnyTimeTip = remember { mutableStateOf(false) }
+
     val openDateDialog = remember { mutableStateOf(false) }
     val openCancelAlertDialog = remember { mutableStateOf(false) }
     val openDeleteAlertDialog = remember { mutableStateOf(false) }
-    // todo update installed apps everytime if user deleted or installed new apps, here not main activity for no reason anyway it is coroutine
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
+        // updates installed apps everytime if user deleted or installed new apps, it is being called every launch with the main activity cuz the sheet is always there
         scope.launch {
             onEvent(EventActions.UpdateInstalledApps(getInstalledApps(context).sortedBy { it.name }))
+        }
+        Log.d("InstalledApps", "apps being updated")
+    }
+
+    val initialState = remember { mutableStateOf(EventsStates()) } // used to check if changes happen so it will show alert when cancelling
+    var saveInitialState by remember { mutableStateOf(false) }
+    LaunchedEffect(state.isFullSheet, state.isPartialSheet, state.isForcedSheet) {
+        if (saveInitialState) {
+            initialState.value = state.copy()
+            saveInitialState = false
+            Log.d("NewEvent", "Initial state updated ${initialState.value.eventName}")
+        } else if (!state.isFullSheet && !state.isPartialSheet && !state.isForcedSheet) {
+            saveInitialState = true
         }
     }
 
     Column {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .alpha(fullScreenItemsShown),
+            modifier = Modifier.fillMaxWidth().alpha(fullScreenItemsShown),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             AnimatedVisibility(
@@ -131,20 +143,20 @@ fun NewEvent(
                     focusManager.clearFocus()
                     // if nothing changed do not show dialog
                     if (
-                        initialState.eventName != state.eventName ||
-                        initialState.date != state.date ||
-                        initialState.anyTimeTask != state.anyTimeTask ||
-                        initialState.minTime != state.minTime ||
-                        initialState.maxTime != state.maxTime ||
-                        initialState.trackingMode != state.trackingMode ||
-                        initialState.repeat != state.repeat ||
-                        initialState.allowedApps != state.allowedApps ||
-                        initialState.blockedWebs != state.blockedWebs ||
-                        initialState.allowedWebs != state.allowedWebs ||
-                        initialState.customAppsYt != state.customAppsYt
+                        initialState.value.eventName != state.eventName ||
+                        initialState.value.date != state.date ||
+                        initialState.value.anyTimeTask != state.anyTimeTask ||
+                        initialState.value.minTime != state.minTime ||
+                        initialState.value.maxTime != state.maxTime ||
+                        initialState.value.trackingMode != state.trackingMode ||
+                        initialState.value.repeat != state.repeat ||
+                        initialState.value.allowedApps != state.allowedApps ||
+                        initialState.value.blockedWebs != state.blockedWebs ||
+                        initialState.value.allowedWebs != state.allowedWebs ||
+                        initialState.value.customAppsYt != state.customAppsYt
                     ) {
                         openCancelAlertDialog.value = true
-                        Log.d("NewEvent", "Cancel dialog shown initialState: \n$initialState, current state: \n$state")
+                        Log.d("NewEvent", "Initial: ${initialState.value.eventName}, Current: ${state.eventName}")
                     } else {
                         onEvent(EventActions.HideSheet(false))
                     }
@@ -154,7 +166,7 @@ fun NewEvent(
                         onDismissRequest = { openCancelAlertDialog.value = false },
                         onConfirmation = {
                             openCancelAlertDialog.value = false
-                            onEvent(EventActions.HideSheet(true))
+                            onEvent(EventActions.HideSheet(false))
                         },
                         dialogTitle = "Are you sure you want to discard your changes?",
                         mainButton = "Discard changes"
@@ -547,7 +559,6 @@ fun SheetPreview() {
     TimePilotDemoTheme {
         NewEvent(
             state = EventsStates(),
-            initialState = EventsStates(),
             onEvent = { },
             sheetHeight = 800f,
             colors = listOf(),
