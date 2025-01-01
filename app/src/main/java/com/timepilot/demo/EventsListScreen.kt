@@ -148,7 +148,12 @@ fun EventsList(
                                             )
                                         },
                                     ),
-                                startOnClick = {},
+                                startOnClick = {
+                                    // Start $event.name? dialog
+                                    // todo The event can’t be marked as done before the duration ends. The event will automatically end when maximum duration is reached.
+                                    // Start now
+                                    // go back
+                                },
                                 pauseOnClick = {},
                                 markOnClick = {},
                                 backgroundBarColor = colors.find { it.first == event.eventColor }?.second
@@ -162,8 +167,8 @@ fun EventsList(
 
         AnimatedVisibility(
             visible = state.allEvent.isEmpty(),
-            enter = scaleIn(initialScale = 0.4f, animationSpec = tween(200, easing = customEasing)) + fadeIn(),
-            exit = scaleOut(targetScale = 0.3f, animationSpec = tween(150, easing = customEasing)) + fadeOut()
+            enter = scaleIn(initialScale = 0.5f, animationSpec = tween(200, easing = customEasing)) + fadeIn(),
+            exit = scaleOut(targetScale = 0.6f, animationSpec = tween(130, easing = customEasing)) + fadeOut(animationSpec = tween(90))
         ) {
             Column(
                 modifier = Modifier.fillMaxSize(),

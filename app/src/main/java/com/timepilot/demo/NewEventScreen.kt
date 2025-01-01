@@ -29,7 +29,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
@@ -39,7 +38,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.MoreTime
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.TipsAndUpdates
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -106,6 +104,7 @@ fun NewEvent(
     val openDateDialog = remember { mutableStateOf(false) }
     val openCancelAlertDialog = remember { mutableStateOf(false) }
     val openDeleteAlertDialog = remember { mutableStateOf(false) }
+    val openSaveAlertDialog = remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -131,7 +130,9 @@ fun NewEvent(
 
     Column {
         Row(
-            modifier = Modifier.fillMaxWidth().alpha(fullScreenItemsShown),
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(fullScreenItemsShown),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             AnimatedVisibility(
@@ -179,8 +180,24 @@ fun NewEvent(
                 exit = shrinkOut(shrinkTowards = Alignment.Center),
             ) {
                 TopButton("Save", FontWeight.Medium) {
-                    focusManager.clearFocus()
-                    onEvent(EventActions.HideSheet(true))
+                    if (state.eventStatus != EventStatus.IN_PROGRESS) {
+                        focusManager.clearFocus()
+                        onEvent(EventActions.HideSheet(true))
+                    } else {
+                        openSaveAlertDialog.value = true
+                    }
+                }
+
+                if (openSaveAlertDialog.value) {
+                    SimpleAlertDialog(
+                        onDismissRequest = { openSaveAlertDialog.value = false },
+                        onConfirmation = {
+                            openSaveAlertDialog.value = false
+                            onEvent(EventActions.HideSheet(true))
+                        },
+                        dialogTitle = "Changes will apply to the current active event ${state.eventName}",
+                        mainButton = "Save changes"
+                    )
                 }
             }
         }
@@ -431,33 +448,9 @@ fun NewEvent(
                     enter = scaleIn(initialScale = 0.6f, animationSpec = tween(400, easing = customEasing)) + fadeIn(),
                     exit = scaleOut(targetScale = 0.7f, animationSpec = tween(200, easing = customEasing)) + fadeOut()
                 ) {
-                    Box(
-                        Modifier
-                            .padding(20.dp)
-                            .clip(RoundedCornerShape(30.dp))
-                            .background(MaterialTheme.colorScheme.tertiaryContainer)
-                            .padding(18.dp)
-                    ) {
-                        Column(horizontalAlignment = Alignment.End) {
-                            Row {
-                                Icon(
-                                    Icons.Outlined.TipsAndUpdates,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    modifier = Modifier.padding(14.dp)
-                                )
-                                Text(
-                                    "By default, tasks are completed in order. Enable Anytime to start it anytime, even if it’s not the first one.",
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
-                            }
-                            TextButton({
-                                showAnyTimeTip.value = false
-                            }) {
-                                Text("Got it", color = MaterialTheme.colorScheme.onTertiaryContainer)
-                            }
-                        }
-                    }
+                    InfoText(
+                        "By default, tasks are completed in order. Enable Anytime to start it anytime, even if it’s not the first one.",
+                        buttonOnClick = { showAnyTimeTip.value = false })
                 }
             }
         }

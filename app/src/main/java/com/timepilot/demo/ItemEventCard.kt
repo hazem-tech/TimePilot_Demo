@@ -57,7 +57,7 @@ fun EventCard(
     backgroundBarColor: Color,
     previewHideIcons: Boolean = false
 ) {
-    val percentage = 0.4f
+    val percentage = 0.3f // 30% lighter or darker
     val color = if (!isSystemInDarkTheme()) 1f else 0f
     val r = backgroundBarColor.red * (1 - percentage) + color * percentage
     val g = backgroundBarColor.green * (1 - percentage) + color * percentage

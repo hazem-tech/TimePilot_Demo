@@ -69,12 +69,12 @@ class MainActivity : ComponentActivity() {
                         Pair("Main",
                             if (!isSystemInDarkTheme()) colorResource(com.google.android.material.R.color.material_dynamic_primary90)
                             else colorResource(com.google.android.material.R.color.material_dynamic_primary10)),
-                        Pair("Red", if (!isSystemInDarkTheme()) Color(0xFFF5BABA) else Color(0xFF341314)),
-                        Pair("Green", if (!isSystemInDarkTheme()) Color(0xFFBAF5CC) else Color(0xFF143413) ),
-                        Pair("Blue", if (!isSystemInDarkTheme()) Color(0xFFB4CDFF) else Color(0xFF122038)),
-                        Pair("Yellow", if (!isSystemInDarkTheme()) Color(0xFFFDD9AB) else Color(0xFF443902)),
-                        Pair("Pink", if (!isSystemInDarkTheme()) Color(0xFFFFB1DB) else Color(0xFF341235)),
-                        Pair("Purple", if (!isSystemInDarkTheme()) Color(0xFFDEB7FF) else Color(0xFF23103D))
+                        Pair("Red", if (!isSystemInDarkTheme()) Color(0xFFF6BFBF) else Color(0xFF301B21)),
+                        Pair("Green", if (!isSystemInDarkTheme()) Color(0xFFD1EDD6) else Color(0xFF1D291A) ),
+                        Pair("Blue", if (!isSystemInDarkTheme()) Color(0xFFCAD6F4) else Color(0xFF122038)),
+                        Pair("Yellow", if (!isSystemInDarkTheme()) Color(0xFFFDD9AB) else Color(0xFF372C17)),
+                        Pair("Pink", if (!isSystemInDarkTheme()) Color(0xFFF0BBDB) else Color(0xFF3A1F39)),
+                        Pair("Purple", if (!isSystemInDarkTheme()) Color(0xFFD9C1F3) else Color(0xFF201731))
                     )
 
                     // todo show onboarding screen if the user never created an event like if it is empty, idk if the user saw it before the only way to now show it is to have at least one event in the past at any date

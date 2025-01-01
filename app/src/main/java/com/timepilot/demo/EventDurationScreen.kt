@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AvTimer
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Leaderboard
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,7 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -141,23 +139,7 @@ fun EventDuration(
         )
 
         Spacer(modifier = Modifier.weight(1f))
-        ListItem(
-            headlineContent = {
-                Column {
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = null,
-                        Modifier.padding(bottom = 15.dp)
-                    )
-                    Text(
-                        "${state.eventName} can only be marked complete after minimum duration. And it will automatically complete after maximum duration",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 50.dp)
-                    )
-                }
-            },
-            colors = ListItemDefaults.colors(headlineColor = MaterialTheme.colorScheme.onSurfaceVariant),
-        )
+        InfoText("${state.eventName} can only be marked complete after minimum duration. And it will automatically complete after maximum duration")
     }
 }
 

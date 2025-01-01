@@ -77,8 +77,9 @@ fun AppsWebsScreen(
     onEvent: (EventActions) -> Unit,
     navController: NavController
 ) {
+    // disable editing it and also web and custom when focus mode is one and is already created, and when it is currently active, disable EVERYTHING if finished
     var selectedIndex by remember { mutableIntStateOf(0) }
-    val options = listOf("Apps", "Websites", "Custom")
+    val options = listOf("Apps", "Websites", "More")
 
     Column(Modifier.background(MaterialTheme.colorScheme.background)) {
         CenterAlignedTopAppBar(

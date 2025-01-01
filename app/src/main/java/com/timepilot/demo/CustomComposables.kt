@@ -11,8 +11,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,6 +30,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.TipsAndUpdates
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.DropdownMenu
@@ -35,6 +39,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,7 +60,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -107,27 +112,11 @@ fun CustomBottomSheet(
 ) {
     val hiddenHeight = 0.dp
     val partialHeight = 300.dp
-    val fullHeight = LocalConfiguration.current.screenHeightDp.dp - 20.dp
+    var fullHeight = 700.dp
+    var sheetHeight by remember { mutableStateOf(0.dp) }
 
-    var sheetHeight by remember { mutableStateOf(hiddenHeight) }
-    var currentHeight by remember { mutableStateOf(partialHeight) }
-    val animatedHeight by animateDpAsState(targetValue = sheetHeight, label = "SheetHeightAnimation")
-
-    LaunchedEffect(state) {
-        sheetHeight = if (state.isPartialSheet) {
-            partialHeight
-        } else if (state.isFullSheet) {
-            fullHeight
-        } else if (state.isForcedSheet) {
-            fullHeight
-        } else {
-            hiddenHeight
-        }
-    }
-
-    Box {
-        Box(modifier = Modifier
-            .fillMaxSize()
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
             .background(Color.Black.copy(alpha = (sheetHeight.value / fullHeight.value) / 1.6f))
             .then(
                 if (state.isPartialSheet) {
@@ -142,10 +131,15 @@ fun CustomBottomSheet(
                 } else {
                     Modifier
                 }
-            )
-        )
+            ))
+    {
+        fullHeight = maxHeight - 40.dp
+        var touchPointerPosition by remember { mutableStateOf(0.dp) }
+        val animatedHeight by animateDpAsState(targetValue = sheetHeight, label = "SheetHeightAnimation")
+
         Surface(
             modifier = Modifier
+                .fillMaxWidth()
                 .height(animatedHeight)
                 .align(Alignment.BottomCenter),
             shape = BottomSheetDefaults.ExpandedShape,
@@ -157,27 +151,27 @@ fun CustomBottomSheet(
                         .draggable(
                             orientation = Orientation.Vertical,
                             state = rememberDraggableState { delta ->
-                                currentHeight =
+                                touchPointerPosition =
                                     if (!state.isForcedSheet)
-                                        (currentHeight - delta.dp).coerceIn(
+                                        (touchPointerPosition - delta.dp).coerceIn(
                                             hiddenHeight,
                                             fullHeight + 10.dp
                                         )
                                     else
-                                        (currentHeight - delta.dp / 12).coerceIn(
+                                        (touchPointerPosition - delta.dp / 12).coerceIn(
                                             hiddenHeight,
                                             fullHeight + 10.dp
                                         )
-                                sheetHeight = currentHeight
+                                sheetHeight = touchPointerPosition
                             },
                             onDragStopped = {
                                 sheetHeight = when {
-                                    currentHeight > fullHeight * 0.7f -> {
+                                    touchPointerPosition > fullHeight * 0.7f -> {
                                         if (!state.isForcedSheet) onEvent(EventActions.ShowFullSheet(state.alreadyCreatedEvent))
                                         fullHeight
                                     }
 
-                                    currentHeight < fullHeight * 0.3f -> {
+                                    touchPointerPosition < fullHeight * 0.3f -> {
                                         if (!state.isForcedSheet) {
                                             onEvent(EventActions.HideSheet(true))
                                             hiddenHeight
@@ -195,13 +189,25 @@ fun CustomBottomSheet(
                                         }
                                     }
                                 }
-                                currentHeight = sheetHeight
+                                touchPointerPosition = sheetHeight
                             }
                         ),
                     content = { BottomSheetDefaults.DragHandle(Modifier.align(Alignment.Center)) }
                 )
                 content(sheetHeight.value / fullHeight.value) // to get 0 to 1 value
             }
+        }
+    }
+
+    LaunchedEffect(state) {
+        sheetHeight = if (state.isPartialSheet) {
+            partialHeight
+        } else if (state.isFullSheet) {
+            fullHeight
+        } else if (state.isForcedSheet) {
+            fullHeight
+        } else {
+            hiddenHeight
         }
     }
 }
@@ -353,5 +359,55 @@ fun NumPicker(
             modifier = modifier,
             pageContent = pagerContent
         )
+    }
+}
+
+@Composable
+fun InfoText(text: String, buttonOnClick: (() -> Unit)? = null, modifier: Modifier = Modifier) {
+    if (buttonOnClick == null) {
+        ListItem(
+            headlineContent = {
+                Column {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = null,
+                        Modifier.padding(bottom = 15.dp)
+                    )
+                    Text(
+                        text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 60.dp)
+                    )
+                }
+            },
+            colors = ListItemDefaults.colors(headlineColor = MaterialTheme.colorScheme.onSurfaceVariant),
+            modifier = modifier
+        )
+    } else {
+        Box(
+            Modifier
+                .padding(20.dp)
+                .clip(RoundedCornerShape(30.dp))
+                .background(MaterialTheme.colorScheme.tertiaryContainer)
+                .padding(top = 18.dp, bottom = 18.dp, end = 18.dp, start = 12.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.End) {
+                Row {
+                    Icon(
+                        Icons.Outlined.TipsAndUpdates,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.padding(14.dp)
+                    )
+                    Text(
+                        text,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+                TextButton(buttonOnClick) {
+                    Text("Got it", color = MaterialTheme.colorScheme.onTertiaryContainer)
+                }
+            }
+        }
     }
 }

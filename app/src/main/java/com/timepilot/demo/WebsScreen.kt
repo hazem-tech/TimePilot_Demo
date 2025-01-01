@@ -188,6 +188,12 @@ fun WebsScreen(
                 )
             }
         }
+
+        item {
+            AnimatedVisibility(state.blockedWebs.isEmpty()) {
+                InfoText("You can add exceptions, allowing specific pages in a blocked website", buttonOnClick = {})
+            }
+        }
     }
 }
 
